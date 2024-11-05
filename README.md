@@ -19,3 +19,5 @@ rye run gradio src/app.py
 ```
 
 For the time being the backend is handled by ollama, so you need to have it installed and running (also check if your computer is capable of running local LLM models).
+
+Don't forget to add your API keys in the .env file.
