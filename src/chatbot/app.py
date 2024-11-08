@@ -45,6 +45,6 @@ if user_query is not None and user_query != "":
         with st.chat_message("AI"):
             st.write(formatted_response)  # Display the formatted response
 
-        st.session_state.chat_history.append(AIMessage(content=response))
+        st.session_state.chat_history.append(AIMessage(content=formatted_response))
     except Exception as e:
         st.error(f"Error generating response: {e}")
