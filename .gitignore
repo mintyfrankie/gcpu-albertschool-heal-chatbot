@@ -9,5 +9,8 @@ wheels/
 # venv
 .venv
 
+# .env
+.env
+
 # misc
 **/.DS_Store
