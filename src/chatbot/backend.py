@@ -77,7 +77,7 @@ def get_response(user_question: str, chat_history: str) -> str:
     """
 
     prompt = PromptTemplate.from_template(template)
-    
+
     chain = prompt | llm | parser
 
     response = chain.invoke(

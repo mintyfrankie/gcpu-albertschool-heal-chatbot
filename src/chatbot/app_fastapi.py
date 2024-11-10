@@ -3,7 +3,6 @@ from pydantic import BaseModel
 import backend
 import format_output
 
-import os
 
 
 app = FastAPI(
