@@ -5,9 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+.ruff_cache/
 
 # venv
 .venv
+
+# .env
+**/.env
+gen-lang-client-credentials.json
 
 # misc
 **/.DS_Store
