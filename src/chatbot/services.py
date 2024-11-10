@@ -1,3 +1,7 @@
+"""
+Service layer for the chatbot that handles business logic
+"""
+
 import json
 
 from langchain_core.prompts import PromptTemplate

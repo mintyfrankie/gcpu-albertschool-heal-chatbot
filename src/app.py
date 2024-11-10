@@ -1,9 +1,15 @@
+"""
+Streamlit app prototype for frontend display
+"""
+
 import streamlit as st
 
-from chatbot import backend, format_output
+from chatbot import services
 
 from langchain_core.messages import AIMessage, HumanMessage
 from dotenv import load_dotenv
+
+from chatbot.utils import format_output
 
 # Load environment variables
 load_dotenv()
@@ -38,7 +44,7 @@ if user_query is not None and user_query != "":
 
     # Get response and format it
     try:
-        response = backend.get_response(user_query, st.session_state.chat_history)
+        response = services.get_response(user_query, st.session_state.chat_history)
         formatted_response = format_output.format_response(response)
 
         with st.chat_message("AI"):
