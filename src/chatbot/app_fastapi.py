@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import backend
-import format_output
-
+from chatbot import backend, format_output
 
 
 app = FastAPI(

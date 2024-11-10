@@ -1,25 +1,49 @@
-import gradio as gr
-import ollama
+import streamlit as st
 
-MODEL_NAME = "llama3.1:8b"
+from chatbot import backend, format_output
+
+from langchain_core.messages import AIMessage, HumanMessage
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# App configuration
+st.set_page_config(page_title="Medical Pre-triage Chatbot", page_icon="🧑‍⚕️")
+st.title("Medical Pre-Triage Chatbot")
+
+# Initialize session state for chat history
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        AIMessage(content="Hello, I am a bot. How can I help you?"),
+    ]
 
 
-def generate_request(message: str) -> list[dict[str, str]]:
-    return [{"role": "user", "content": message}]
+# Display the chat history
+for message in st.session_state.chat_history:
+    if isinstance(message, AIMessage):
+        with st.chat_message("AI"):
+            st.write(message.content)
+    elif isinstance(message, HumanMessage):
+        with st.chat_message("Human"):
+            st.write(message.content)
 
+# Capture user input
+user_query: str | None = st.chat_input("Type your message here...")
+if user_query is not None and user_query != "":
+    st.session_state.chat_history.append(HumanMessage(content=user_query))
 
-def reply(message: str, history: list[list[str]]) -> str:
-    messages = []
-    for human, assistant in history:
-        messages.append({"role": "user", "content": human})
-        messages.append({"role": "assistant", "content": assistant})
-    messages.append({"role": "user", "content": message})
+    with st.chat_message("Human"):
+        st.markdown(user_query)
 
-    response = ollama.chat(model=MODEL_NAME, messages=messages)
-    return response["message"]["content"]
+    # Get response and format it
+    try:
+        response = backend.get_response(user_query, st.session_state.chat_history)
+        formatted_response = format_output.format_response(response)
 
+        with st.chat_message("AI"):
+            st.write(formatted_response)  # Display the formatted response
 
-demo = gr.ChatInterface(reply, type="messages")
-
-if __name__ == "__main__":
-    demo.launch()
+        st.session_state.chat_history.append(AIMessage(content=formatted_response))
+    except Exception as e:
+        st.error(f"Error generating response: {e}")
