@@ -7,6 +7,11 @@ authors = [
 ]
 dependencies = [
     "gradio>=5.4.0",
+    "streamlit>=1.40.0",
+    "langchain-core>=0.3.15",
+    "python-dotenv>=1.0.1",
+    "langchain-google-genai>=2.0.4",
+    "langchain>=0.3.7",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -26,4 +31,4 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gcpu_albert_hackathon"]
+packages = ["src/chatbot"]

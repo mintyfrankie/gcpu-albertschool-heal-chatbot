@@ -1,3 +1,7 @@
+"""
+Service layer for the chatbot that handles business logic
+"""
+
 import json
 
 from langchain_core.prompts import PromptTemplate
@@ -43,7 +47,7 @@ class TriageResponse(BaseModel):
         return values
 
 
-def get_response(user_question: str, chat_history: str) -> str:
+def get_response(user_question: str, chat_history: list[str]) -> str:
     """Generate a response based on user input and chat history."""
     parser = PydanticOutputParser(pydantic_object=TriageResponse)
     llm = ChatGoogleGenerativeAI(
@@ -77,7 +81,7 @@ def get_response(user_question: str, chat_history: str) -> str:
     """
 
     prompt = PromptTemplate.from_template(template)
-    
+
     chain = prompt | llm | parser
 
     response = chain.invoke(
