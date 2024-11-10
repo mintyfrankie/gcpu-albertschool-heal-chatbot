@@ -4,8 +4,7 @@ FastAPI server wrapper in charge of handling requests and responses
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from chatbot import services
-from chatbot.utils import format_output
+from chatbot import get_response, format_response
 
 
 app = FastAPI(
@@ -34,8 +33,8 @@ async def get_triage_response(user_query: UserQuery):
     - JSON response with formatted response from the chatbot.
     """
     try:
-        response = services.get_response(user_query.query, user_query.chat_history)
-        formatted_response = format_output.format_response(response)
+        response = get_response(user_query.query, user_query.chat_history)
+        formatted_response = format_response(response)
         return {"response": formatted_response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {e}")
