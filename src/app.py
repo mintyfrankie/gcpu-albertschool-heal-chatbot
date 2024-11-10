@@ -4,12 +4,11 @@ Streamlit app prototype for frontend display
 
 import streamlit as st
 
-from chatbot import services
+from chatbot import get_response, format_response
 
 from langchain_core.messages import AIMessage, HumanMessage
 from dotenv import load_dotenv
 
-from chatbot.utils import format_output
 
 # Load environment variables
 load_dotenv()
@@ -20,9 +19,10 @@ st.title("Medical Pre-Triage Chatbot")
 
 # Initialize session state for chat history
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        AIMessage(content="Hello, I am a bot. How can I help you?"),
-    ]
+    st.session_state.chat_history = []
+    st.session_state.chat_history.append(
+        AIMessage(content="Hello, I am a bot. How can I help you?")
+    )
 
 
 # Display the chat history
@@ -44,8 +44,8 @@ if user_query is not None and user_query != "":
 
     # Get response and format it
     try:
-        response = services.get_response(user_query, st.session_state.chat_history)
-        formatted_response = format_output.format_response(response)
+        response = get_response(user_query, st.session_state.chat_history)
+        formatted_response = format_response(response)
 
         with st.chat_message("AI"):
             st.write(formatted_response)  # Display the formatted response
