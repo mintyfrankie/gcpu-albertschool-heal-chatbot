@@ -30,6 +30,7 @@ attrs==24.2.0
 blinker==1.9.0
     # via streamlit
 cachetools==5.5.0
+    # via google-auth
     # via streamlit
 certifi==2024.8.30
     # via httpcore
@@ -62,15 +63,44 @@ gitdb==4.0.11
     # via gitpython
 gitpython==3.1.43
     # via streamlit
+google-ai-generativelanguage==0.6.10
+    # via google-generativeai
+google-api-core==2.22.0
+    # via google-ai-generativelanguage
+    # via google-api-python-client
+    # via google-generativeai
+google-api-python-client==2.151.0
+    # via google-generativeai
+google-auth==2.36.0
+    # via google-ai-generativelanguage
+    # via google-api-core
+    # via google-api-python-client
+    # via google-auth-httplib2
+    # via google-generativeai
+google-auth-httplib2==0.2.0
+    # via google-api-python-client
+google-generativeai==0.8.3
+    # via langchain-google-genai
+googleapis-common-protos==1.65.0
+    # via google-api-core
+    # via grpcio-status
 gradio==5.4.0
     # via gcpu-albert-hackathon
 gradio-client==1.4.2
     # via gradio
+grpcio==1.67.1
+    # via google-api-core
+    # via grpcio-status
+grpcio-status==1.67.1
+    # via google-api-core
 h11==0.14.0
     # via httpcore
     # via uvicorn
 httpcore==1.0.6
     # via httpx
+httplib2==0.22.0
+    # via google-api-python-client
+    # via google-auth-httplib2
 httpx==0.27.2
     # via gradio
     # via gradio-client
@@ -107,6 +137,9 @@ jupyter-core==5.7.2
     # via ipykernel
     # via jupyter-client
 langchain-core==0.3.15
+    # via gcpu-albert-hackathon
+    # via langchain-google-genai
+langchain-google-genai==2.0.4
     # via gcpu-albert-hackathon
 langsmith==0.1.142
     # via langchain-core
@@ -155,7 +188,16 @@ platformdirs==4.3.6
     # via jupyter-core
 prompt-toolkit==3.0.48
     # via ipython
+proto-plus==1.25.0
+    # via google-ai-generativelanguage
+    # via google-api-core
 protobuf==5.28.3
+    # via google-ai-generativelanguage
+    # via google-api-core
+    # via google-generativeai
+    # via googleapis-common-protos
+    # via grpcio-status
+    # via proto-plus
     # via streamlit
 psutil==6.1.0
     # via ipykernel
@@ -165,10 +207,17 @@ pure-eval==0.2.3
     # via stack-data
 pyarrow==18.0.0
     # via streamlit
+pyasn1==0.6.1
+    # via pyasn1-modules
+    # via rsa
+pyasn1-modules==0.4.1
+    # via google-auth
 pydantic==2.9.2
     # via fastapi
+    # via google-generativeai
     # via gradio
     # via langchain-core
+    # via langchain-google-genai
     # via langsmith
 pydantic-core==2.23.4
     # via pydantic
@@ -179,6 +228,8 @@ pydub==0.25.1
 pygments==2.18.0
     # via ipython
     # via rich
+pyparsing==3.2.0
+    # via httplib2
 python-dateutil==2.9.0.post0
     # via jupyter-client
     # via pandas
@@ -199,6 +250,7 @@ referencing==0.35.1
     # via jsonschema
     # via jsonschema-specifications
 requests==2.32.3
+    # via google-api-core
     # via huggingface-hub
     # via langsmith
     # via requests-toolbelt
@@ -211,6 +263,8 @@ rich==13.9.3
 rpds-py==0.21.0
     # via jsonschema
     # via referencing
+rsa==4.9
+    # via google-auth
 ruff==0.7.1
     # via gradio
 safehttpx==0.1.1
@@ -246,6 +300,7 @@ tornado==6.4.1
     # via jupyter-client
     # via streamlit
 tqdm==4.66.6
+    # via google-generativeai
     # via huggingface-hub
 traitlets==5.14.3
     # via comm
@@ -259,6 +314,7 @@ typer==0.12.5
 typing-extensions==4.12.2
     # via altair
     # via fastapi
+    # via google-generativeai
     # via gradio
     # via gradio-client
     # via huggingface-hub
@@ -269,6 +325,8 @@ typing-extensions==4.12.2
     # via typer
 tzdata==2024.2
     # via pandas
+uritemplate==4.1.1
+    # via google-api-python-client
 urllib3==2.2.3
     # via requests
 uvicorn==0.32.0
