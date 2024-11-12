@@ -47,7 +47,7 @@ class TriageResponse(BaseModel):
         return values
 
 
-def get_response(user_question: str, chat_history: list[str]) -> str:
+def get_triage_response(user_question: str, chat_history: list[str]) -> TriageResponse:
     """Generate a response based on user input and chat history."""
     parser = PydanticOutputParser(pydantic_object=TriageResponse)
     llm = ChatGoogleGenerativeAI(
@@ -85,20 +85,7 @@ def get_response(user_question: str, chat_history: list[str]) -> str:
     chain = prompt | llm | parser
 
     response = chain.invoke(
-        {
-            "chat_history": chat_history,
-            "user_question": user_question,
-        }
+        {"chat_history": chat_history, "user_question": user_question}
     )
 
-    try:
-        response = chain.invoke(
-            {"chat_history": chat_history, "user_question": user_question}
-        )
-        if isinstance(response, TriageResponse):
-            return response.model_dump_json(indent=2)
-        elif isinstance(response, dict):
-            return json.dumps(response, indent=2)
-        return str(response)
-    except (ValidationError, ValueError) as e:
-        return json.dumps({"Error": f"Invalid response structure: {e}"}, indent=2)
+    return response

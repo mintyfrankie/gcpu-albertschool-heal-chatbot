@@ -4,7 +4,7 @@ Streamlit app prototype for frontend display
 
 import streamlit as st
 
-from chatbot import get_response, format_response
+from chatbot import get_triage_response, format_response
 
 from langchain_core.messages import AIMessage, HumanMessage
 from dotenv import load_dotenv
@@ -44,7 +44,7 @@ if user_query is not None and user_query != "":
 
     # Get response and format it
     try:
-        response = get_response(user_query, st.session_state.chat_history)
+        response = get_triage_response(user_query, st.session_state.chat_history)
         formatted_response = format_response(response)
 
         with st.chat_message("AI"):
