@@ -26,6 +26,7 @@ dev-dependencies = [
     "ipykernel>=6.29.5",
     "ollama>=0.3.3",
     "pytest>=8.3.3",
+    "langfuse>=2.53.9",
 ]
 
 [tool.hatch.metadata]
