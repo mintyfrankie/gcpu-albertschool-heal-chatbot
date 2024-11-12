@@ -2,14 +2,19 @@
 Service layer for the chatbot that handles business logic
 """
 
-import json
+import os
+from typing import List, Optional
 
+from dotenv import load_dotenv
+from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field, model_validator, ValidationError
+from langfuse.callback import CallbackHandler
+from pydantic import BaseModel, Field, model_validator
 
-from typing import List, Optional
+from chatbot.utils.langfuse import get_langfuse_callback_handler
+
+load_dotenv()
 
 
 class TriageResponse(BaseModel):
@@ -47,7 +52,7 @@ class TriageResponse(BaseModel):
         return values
 
 
-def get_response(user_question: str, chat_history: list[str]) -> str:
+def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
     """Generate a response based on user input and chat history."""
     parser = PydanticOutputParser(pydantic_object=TriageResponse)
     llm = ChatGoogleGenerativeAI(
@@ -85,20 +90,14 @@ def get_response(user_question: str, chat_history: list[str]) -> str:
     chain = prompt | llm | parser
 
     response = chain.invoke(
-        {
-            "chat_history": chat_history,
-            "user_question": user_question,
-        }
+        {"chat_history": chat_history, "user_question": user_question},
+        config={"callbacks": [get_langfuse_callback_handler()]},
     )
 
-    try:
-        response = chain.invoke(
-            {"chat_history": chat_history, "user_question": user_question}
-        )
-        if isinstance(response, TriageResponse):
-            return response.model_dump_json(indent=2)
-        elif isinstance(response, dict):
-            return json.dumps(response, indent=2)
-        return str(response)
-    except (ValidationError, ValueError) as e:
-        return json.dumps({"Error": f"Invalid response structure: {e}"}, indent=2)
+    return response
+
+
+if __name__ == "__main__":
+    QUERY = "I have a headache and a cough"
+    response = get_response(QUERY, [])
+    print(response)
