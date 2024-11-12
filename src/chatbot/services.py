@@ -12,7 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.callback import CallbackHandler
 from pydantic import BaseModel, Field, model_validator
 
-from chatbot import MAIN_PROMPT_TEMPLATE
+from chatbot.utils import ORIGINAL_PROMPT_TEMPLATE
 from chatbot.utils.langfuse import get_langfuse_callback_handler
 
 load_dotenv()
@@ -61,7 +61,7 @@ def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
         temperature=0,
     )
 
-    prompt = PromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
+    prompt = PromptTemplate.from_template(ORIGINAL_PROMPT_TEMPLATE)
 
     chain = prompt | llm | parser
 

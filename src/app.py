@@ -3,12 +3,10 @@ Streamlit app prototype for frontend display
 """
 
 import streamlit as st
-
-from chatbot import get_response, format_response
-
-from langchain_core.messages import AIMessage, HumanMessage
 from dotenv import load_dotenv
+from langchain_core.messages import AIMessage, HumanMessage
 
+from chatbot import format_response, get_response
 
 # Load environment variables
 load_dotenv()
