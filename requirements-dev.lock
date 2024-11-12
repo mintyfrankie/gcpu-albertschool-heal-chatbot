@@ -61,6 +61,8 @@ debugpy==1.8.7
     # via ipykernel
 decorator==5.1.1
     # via ipython
+docstring-parser==0.16
+    # via google-cloud-aiplatform
 executing==2.1.0
     # via stack-data
 fastapi==0.115.4
@@ -84,6 +86,11 @@ google-ai-generativelanguage==0.6.10
 google-api-core==2.22.0
     # via google-ai-generativelanguage
     # via google-api-python-client
+    # via google-cloud-aiplatform
+    # via google-cloud-bigquery
+    # via google-cloud-core
+    # via google-cloud-resource-manager
+    # via google-cloud-storage
     # via google-generativeai
 google-api-python-client==2.151.0
     # via google-generativeai
@@ -92,13 +99,37 @@ google-auth==2.36.0
     # via google-api-core
     # via google-api-python-client
     # via google-auth-httplib2
+    # via google-cloud-aiplatform
+    # via google-cloud-bigquery
+    # via google-cloud-core
+    # via google-cloud-resource-manager
+    # via google-cloud-storage
     # via google-generativeai
 google-auth-httplib2==0.2.0
     # via google-api-python-client
+google-cloud-aiplatform==1.71.1
+    # via langchain-google-vertexai
+google-cloud-bigquery==3.27.0
+    # via google-cloud-aiplatform
+google-cloud-core==2.4.1
+    # via google-cloud-bigquery
+    # via google-cloud-storage
+google-cloud-resource-manager==1.13.0
+    # via google-cloud-aiplatform
+google-cloud-storage==2.18.2
+    # via google-cloud-aiplatform
+    # via langchain-google-vertexai
+google-crc32c==1.6.0
+    # via google-cloud-storage
+    # via google-resumable-media
 google-generativeai==0.8.3
     # via langchain-google-genai
+google-resumable-media==2.7.2
+    # via google-cloud-bigquery
+    # via google-cloud-storage
 googleapis-common-protos==1.65.0
     # via google-api-core
+    # via grpc-google-iam-v1
     # via grpcio-status
 gradio==5.4.0
     # via gcpu-albert-hackathon
@@ -106,8 +137,12 @@ gradio-client==1.4.2
     # via gradio
 greenlet==3.1.1
     # via sqlalchemy
+grpc-google-iam-v1==0.13.1
+    # via google-cloud-resource-manager
 grpcio==1.67.1
     # via google-api-core
+    # via googleapis-common-protos
+    # via grpc-google-iam-v1
     # via grpcio-status
 grpcio-status==1.67.1
     # via google-api-core
@@ -122,10 +157,15 @@ httplib2==0.22.0
 httpx==0.27.2
     # via gradio
     # via gradio-client
+    # via langchain-google-vertexai
     # via langfuse
+    # via langgraph-sdk
     # via langsmith
     # via ollama
     # via safehttpx
+httpx-sse==0.4.0
+    # via langchain-google-vertexai
+    # via langgraph-sdk
 huggingface-hub==0.26.2
     # via gradio
     # via gradio-client
@@ -165,13 +205,24 @@ langchain-core==0.3.15
     # via gcpu-albert-hackathon
     # via langchain
     # via langchain-google-genai
+    # via langchain-google-vertexai
     # via langchain-text-splitters
+    # via langgraph
+    # via langgraph-checkpoint
 langchain-google-genai==2.0.4
+    # via gcpu-albert-hackathon
+langchain-google-vertexai==2.0.7
     # via gcpu-albert-hackathon
 langchain-text-splitters==0.3.2
     # via langchain
 langfuse==2.53.9
     # via gcpu-albert-hackathon
+langgraph==0.2.45
+    # via gcpu-albert-hackathon
+langgraph-checkpoint==2.0.2
+    # via langgraph
+langgraph-sdk==0.1.35
+    # via langgraph
 langsmith==0.1.142
     # via langchain
     # via langchain-core
@@ -185,6 +236,8 @@ matplotlib-inline==0.1.7
     # via ipython
 mdurl==0.1.2
     # via markdown-it-py
+msgpack==1.1.0
+    # via langgraph-checkpoint
 multidict==6.1.0
     # via aiohttp
     # via yarl
@@ -197,13 +250,17 @@ numpy==1.26.4
     # via langchain
     # via pandas
     # via pydeck
+    # via shapely
     # via streamlit
 ollama==0.3.3
 orjson==3.10.10
     # via gradio
+    # via langgraph-sdk
     # via langsmith
 packaging==24.1
     # via altair
+    # via google-cloud-aiplatform
+    # via google-cloud-bigquery
     # via gradio
     # via gradio-client
     # via huggingface-hub
@@ -231,11 +288,16 @@ propcache==0.2.0
 proto-plus==1.25.0
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-aiplatform
+    # via google-cloud-resource-manager
 protobuf==5.28.3
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-aiplatform
+    # via google-cloud-resource-manager
     # via google-generativeai
     # via googleapis-common-protos
+    # via grpc-google-iam-v1
     # via grpcio-status
     # via proto-plus
     # via streamlit
@@ -252,11 +314,14 @@ pyasn1-modules==0.4.1
     # via google-auth
 pydantic==2.9.2
     # via fastapi
+    # via gcpu-albert-hackathon
+    # via google-cloud-aiplatform
     # via google-generativeai
     # via gradio
     # via langchain
     # via langchain-core
     # via langchain-google-genai
+    # via langchain-google-vertexai
     # via langfuse
     # via langsmith
 pydantic-core==2.23.4
@@ -272,6 +337,7 @@ pyparsing==3.2.0
     # via httplib2
 pytest==8.3.3
 python-dateutil==2.9.0.post0
+    # via google-cloud-bigquery
     # via jupyter-client
     # via pandas
 python-dotenv==1.0.1
@@ -295,6 +361,8 @@ referencing==0.35.1
     # via jsonschema-specifications
 requests==2.32.3
     # via google-api-core
+    # via google-cloud-bigquery
+    # via google-cloud-storage
     # via huggingface-hub
     # via langchain
     # via langsmith
@@ -316,6 +384,8 @@ safehttpx==0.1.1
     # via gradio
 semantic-version==2.10.0
     # via gradio
+shapely==2.0.6
+    # via google-cloud-aiplatform
 shellingham==1.5.4
     # via typer
 six==1.16.0
@@ -362,6 +432,7 @@ typer==0.12.5
 typing-extensions==4.12.2
     # via altair
     # via fastapi
+    # via gcpu-albert-hackathon
     # via google-generativeai
     # via gradio
     # via gradio-client
