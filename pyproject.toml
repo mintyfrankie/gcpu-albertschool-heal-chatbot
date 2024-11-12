@@ -25,6 +25,7 @@ managed = true
 dev-dependencies = [
     "ipykernel>=6.29.5",
     "ollama>=0.3.3",
+    "pytest>=8.3.3",
 ]
 
 [tool.hatch.metadata]

@@ -125,6 +125,8 @@ idna==3.10
     # via httpx
     # via requests
     # via yarl
+iniconfig==2.0.0
+    # via pytest
 ipykernel==6.29.5
 ipython==8.29.0
     # via ipykernel
@@ -195,6 +197,7 @@ packaging==24.1
     # via huggingface-hub
     # via ipykernel
     # via langchain-core
+    # via pytest
     # via streamlit
 pandas==2.2.3
     # via gradio
@@ -208,6 +211,8 @@ pillow==11.0.0
     # via streamlit
 platformdirs==4.3.6
     # via jupyter-core
+pluggy==1.5.0
+    # via pytest
 prompt-toolkit==3.0.48
     # via ipython
 propcache==0.2.0
@@ -255,6 +260,7 @@ pygments==2.18.0
     # via rich
 pyparsing==3.2.0
     # via httplib2
+pytest==8.3.3
 python-dateutil==2.9.0.post0
     # via jupyter-client
     # via pandas
