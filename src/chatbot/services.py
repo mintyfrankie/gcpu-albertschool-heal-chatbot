@@ -12,6 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.callback import CallbackHandler
 from pydantic import BaseModel, Field, model_validator
 
+from chatbot import MAIN_PROMPT_TEMPLATE
 from chatbot.utils.langfuse import get_langfuse_callback_handler
 
 load_dotenv()
@@ -60,32 +61,7 @@ def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
         temperature=0,
     )
 
-    template = """
-        You are a medical assistant specializing in initial triage. When assessing a patient, evaluate the severity of their symptoms as "Mild," "Moderate," or "Severe" based on their descriptions and any additional context from an image if provided. Also provide a score out of 100 for how confident you are about the severity level.
-
-        If you are less than 70% confident in your assessment, generate follow-up questions that could help you gain more clarity about the patient's symptoms. These questions should be relevant, specific, and aimed at better understanding the patient's condition.
-
-        Consider both text descriptions of symptoms and image descriptions when formulating your response. Your response should include the following structure:
-
-        1. "Severity": The severity level ("Mild," "Moderate," or "Severe").
-        2. "Confidence_Level": A confidence score out of 100 for your assessment.
-        3. "Advice": Provide recommendations or advice based on the symptoms.
-        4. "Follow_up_Questions": A list of follow-up questions for the user if you are not confident in your assessment (otherwise, provide an empty list).
-
-        Chat history: {chat_history}
-
-        User question: Patient reports the following symptoms: {user_question}.
-
-        Please provide your response in the following JSON format:
-        {{
-            "Severity": "<Severity Level>",
-            "Confidence_Level": <Confidence Score>,
-            "Advice": "<Advice>",
-            "Follow_up_Questions": ["<Question 1>", "<Question 2>"]
-        }}
-    """
-
-    prompt = PromptTemplate.from_template(template)
+    prompt = PromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
 
     chain = prompt | llm | parser
 
