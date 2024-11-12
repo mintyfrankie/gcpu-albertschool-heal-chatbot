@@ -2,12 +2,10 @@
 Service layer for the chatbot that handles business logic
 """
 
-import json
-
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field, model_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator
 
 from typing import List, Optional
 
