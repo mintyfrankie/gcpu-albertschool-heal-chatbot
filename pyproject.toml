@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "langchain-google-genai>=2.0.4",
     "langchain>=0.3.7",
+    "langfuse>=2.53.9",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

@@ -2,17 +2,15 @@
 Service layer for the chatbot that handles business logic
 """
 
+import os
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field, model_validator
-
 from langfuse.callback import CallbackHandler
-
-import os
-from dotenv import load_dotenv
-
-from typing import List, Optional
+from pydantic import BaseModel, Field, model_validator
 
 from chatbot.utils.langfuse import get_langfuse_callback_handler
 
@@ -54,7 +52,7 @@ class TriageResponse(BaseModel):
         return values
 
 
-def get_triage_response(user_question: str, chat_history: list[str]) -> TriageResponse:
+def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
     """Generate a response based on user input and chat history."""
     parser = PydanticOutputParser(pydantic_object=TriageResponse)
     llm = ChatGoogleGenerativeAI(
@@ -83,7 +81,7 @@ def get_triage_response(user_question: str, chat_history: list[str]) -> TriageRe
             "Severity": "<Severity Level>",
             "Confidence_Level": <Confidence Score>,
             "Advice": "<Advice>",
-            "Follow_up_get_langfuse_callback_handler"<Question 2>"]
+            "Follow_up_Questions": ["<Question 1>", "<Question 2>"]
         }}
     """
 
@@ -100,6 +98,6 @@ def get_triage_response(user_question: str, chat_history: list[str]) -> TriageRe
 
 
 if __name__ == "__main__":
-    query = "I have a headache and a cough"
-    response = get_triage_response(query, [])
+    QUERY = "I have a headache and a cough"
+    response = get_response(QUERY, [])
     print(response)

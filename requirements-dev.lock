@@ -27,8 +27,6 @@ anyio==4.6.2.post1
     # via httpx
     # via langfuse
     # via starlette
-appnope==0.1.4
-    # via ipykernel
 asttokens==2.4.1
     # via stack-data
 attrs==24.2.0
@@ -52,6 +50,11 @@ click==8.1.7
     # via streamlit
     # via typer
     # via uvicorn
+colorama==0.4.6
+    # via click
+    # via ipython
+    # via pytest
+    # via tqdm
 comm==0.2.2
     # via ipykernel
 debugpy==1.8.7
@@ -101,6 +104,8 @@ gradio==5.4.0
     # via gcpu-albert-hackathon
 gradio-client==1.4.2
     # via gradio
+greenlet==3.1.1
+    # via sqlalchemy
 grpcio==1.67.1
     # via google-api-core
     # via grpcio-status
@@ -166,6 +171,7 @@ langchain-google-genai==2.0.4
 langchain-text-splitters==0.3.2
     # via langchain
 langfuse==2.53.9
+    # via gcpu-albert-hackathon
 langsmith==0.1.142
     # via langchain
     # via langchain-core
@@ -211,8 +217,6 @@ pandas==2.2.3
     # via streamlit
 parso==0.8.4
     # via jedi
-pexpect==4.9.0
-    # via ipython
 pillow==11.0.0
     # via gradio
     # via streamlit
@@ -237,8 +241,6 @@ protobuf==5.28.3
     # via streamlit
 psutil==6.1.0
     # via ipykernel
-ptyprocess==0.7.0
-    # via pexpect
 pure-eval==0.2.3
     # via stack-data
 pyarrow==18.0.0
@@ -278,6 +280,8 @@ python-multipart==0.0.12
     # via gradio
 pytz==2024.2
     # via pandas
+pywin32==308
+    # via jupyter-core
 pyyaml==6.0.2
     # via gradio
     # via huggingface-hub
@@ -376,6 +380,8 @@ urllib3==2.2.3
     # via requests
 uvicorn==0.32.0
     # via gradio
+watchdog==5.0.3
+    # via streamlit
 wcwidth==0.2.13
     # via prompt-toolkit
 websockets==12.0
