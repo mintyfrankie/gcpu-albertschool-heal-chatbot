@@ -73,7 +73,7 @@ def get_llm_response(
         triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
     else:
         triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
+        triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
 
     triage_chain = triage_prompt | llm | triage_parser
 
