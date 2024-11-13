@@ -10,8 +10,6 @@ ORIGINAL_PROMPT_TEMPLATE = """
     3. "Advice": Provide recommendations or advice based on the symptoms.
     4. "Follow_up_Questions": A list of follow-up questions for the user if you are not confident in your assessment (otherwise, provide an empty list).
 
-    Chat history: {chat_history}
-
     User question: Patient reports the following symptoms: {user_question}.
 
     Please provide your response in the following JSON format:
@@ -33,7 +31,10 @@ MAIN_PROMPT_TEMPLATE = """
 
     Based on these criteria, your output should be one of the following words: \"Mild,\" \"Moderate,\" \"Severe,\" or \"Other.\"
     
-    Output: A single word that represents the severity classification.
+    Please respond with a JSON object in the following format:
+    {{
+        "Severity": "<Mild/Moderate/Severe/Other>"
+    }}
 """
 
 MILD_SEVERITY_PROMPT_TEMPLATE = """
@@ -50,8 +51,15 @@ MILD_SEVERITY_PROMPT_TEMPLATE = """
     
     Respond in the same language the user is using. If the message is in French, respond in French; if it's in English, respond in English.
     
-    Response example:
+    Example Response:#
+    ```
     It sounds like you're dealing with some mild symptoms right now. Make sure to keep an eye on how you're feeling, and if you start to notice anything like a high fever, severe pain, or trouble breathing, it would be a good idea to reach out for medical advice. For any additional relief, a visit to the pharmacy might help—your pharmacist can recommend the best options for you. And remember, I'm here if you have more questions or if things don't get better.
+    ```
+    
+    Please respond with a JSON object in the following format:
+    {{
+        "Advice": "<Advice>"
+    }}
 """
 
 MODERATE_SEVERITY_PROMPT_TEMPLATE = """
@@ -63,11 +71,18 @@ MODERATE_SEVERITY_PROMPT_TEMPLATE = """
         
     Example Response Format: Answer to the User's Question, Additional Self-Care and Monitoring Tips, Encourage Follow-Up and Assistance for Finding Care.
     
-    Example: 
+    Respond in the same language the user is using. If the message is in French, respond in French; if it's in English, respond in English.
+    
+    Example Response:
+    ```
         - Original Message:Hey, I've been having lower back pain for about a week. It's around a 6/10 in intensity. Should I go directly to a physiotherapist?
         - Response:Hi! For pain that has lasted a week, it would be best to see a general practitioner first. They can assess your situation and, if necessary, recommend a physiotherapist or another specialist. While waiting for your appointment, try to rest and avoid strenuous physical activity. An over-the-counter anti-inflammatory can also help relieve the pain - your pharmacist can advise you on the best options.If the pain becomes more intense or if you notice additional symptoms, like numbness or difficulty moving, it would be wise to consult a doctor promptly. I'm here if you have more questions or if you need help finding a doctor!
+    ```
     
-    Respond in the same language the user is using. If the message is in French, respond in French; if it's in English, respond in English.
+    Please respond with a JSON object in the following format:
+    {{
+        "Advice": "<Advice>"
+    }}
 """
 
 SEVERE_SEVERITY_PROMPT_TEMPLATE = """
@@ -94,10 +109,18 @@ SEVERE_SEVERITY_PROMPT_TEMPLATE = """
             - Offer a closing line of support, encouraging them to reach out again if needed.
             - Example: “Take care, and please reach out if you have any updates or further questions.”
         - Tone and Style: Maintain a calm, supportive, and direct tone to minimize user stress. Avoid speculative language and keep instructions clear and specific.
-        
-    Exemple: Hi Steven. It sounds like you need urgent medical attention. Please go to the nearest emergency room or call SAMU at 15 for immediate assistance. To help responders assist you quickly, please provide your full name, your exact location or a nearby landmark, your current symptoms—especially if you experience severe pain, confusion, or difficulty moving—and any important medical conditions you may have.If you're waiting for emergency services, try to unlock any doors and let someone nearby know you need help. Have any relevant medications or medical records ready, and try to stay calm by taking slow, deep breaths. If you're alone, consider calling a trusted friend or family member for support. Take care, and please reach out if you have any updates or further questions.
     
     Respond in the same language the user is using. If the message is in French, respond in French; if it's in English, respond in English.
+    
+    Example Response:
+    ```
+    Hi Steven. It sounds like you need urgent medical attention. Please go to the nearest emergency room or call SAMU at 15 for immediate assistance. To help responders assist you quickly, please provide your full name, your exact location or a nearby landmark, your current symptoms—especially if you experience severe pain, confusion, or difficulty moving—and any important medical conditions you may have.If you're waiting for emergency services, try to unlock any doors and let someone nearby know you need help. Have any relevant medications or medical records ready, and try to stay calm by taking slow, deep breaths. If you're alone, consider calling a trusted friend or family member for support. Take care, and please reach out if you have any updates or further questions.
+    ```
+    
+    Please respond with a JSON object in the following format:
+    {{
+        "Advice": "<Advice>"
+    }}
 """
 
 OTHER_SEVERITY_PROMPT_TEMPLATE = """
@@ -115,4 +138,10 @@ OTHER_SEVERITY_PROMPT_TEMPLATE = """
     Respond in the same language the user is using. If the message is in French, respond in French; if it's in English, respond in English.
     
     Output: A single question or greeting based on the user's current state or emotional cues, starting with a welcoming check-in if this is the initial message.
+    
+    Please respond with a JSON object in the following format:
+    {{
+        "Greeting": "<Greeting>",
+        "Question": "<Question>"
+    }
 """
