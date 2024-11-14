@@ -12,6 +12,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langchain_core.runnables.config import RunnableConfig
 from typing_extensions import TypedDict
 
 from chatbot import format_severity_response
@@ -83,7 +84,7 @@ def get_llm_response(
         )
         classification_response_str = format_severity_response(classification_response)
     except Exception as e:
-        print(f"Error {e}")
+        raise ValueError(f"Error {e}")
 
     triage_chain = construct_chain(Severity(classification_response_str), llm)
 
@@ -94,7 +95,7 @@ def get_llm_response(
         )
         triage_response_str = f"{triage_response.model_dump().get("Response")}"
     except Exception as e:
-        print(f"Error {e}")
+        raise ValueError(f"Error {e}")
 
     return {
         "response": [triage_response],
@@ -139,7 +140,7 @@ def main_graph():
 
 def stream_graph_updates(
     user_input: str,
-    config: dict = {
+    config: RunnableConfig = {
         "configurable": {"thread_id": "3"},
         # "callbacks": [get_langfuse_callback_handler()],
     },
@@ -176,24 +177,24 @@ def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
 
 config, graph, llm, memory = main_graph()
 
-if __name__ == "__main__":
-    while True:
-        # user_input = input("User: ")
-        user_input = "I have a headache and a cough"
-        if user_input.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
-            break
+# if __name__ == "__main__":
+#     while True:
+#         # user_input = input("User: ")
+#         user_input = "I have a headache and a cough"
+#         if user_input.lower() in ["quit", "exit", "q"]:
+#             print("Goodbye!")
+#             break
 
-        events = stream_graph_updates(user_input, config)
+#         events = stream_graph_updates(user_input, config)
 
-        for event in events:
-            try:
-                # Display human message if available
-                if "messages" in event and event["messages"]:
-                    event["messages"][-1].pretty_print()
-            except Exception as e:
-                print("Error while processing messages:", e)
+#         for event in events:
+#             try:
+#                 # Display human message if available
+#                 if "messages" in event and event["messages"]:
+#                     event["messages"][-1].pretty_print()
+#             except Exception as e:
+#                 print("Error while processing messages:", e)
 
-    #     QUERY = "I have a headache and a cough"
-    #     response = get_response(QUERY, [])
-    #     print(response)
+#     #     QUERY = "I have a headache and a cough"
+#     #     response = get_response(QUERY, [])
+#     #     print(response)
