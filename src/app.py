@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 
 # from chatbot import format_response, stream_graph_updates
-from chatbot.services import main_graph, stream_graph_updates
+from chatbot.services import stream_graph_updates
 
 # Load environment variables
 load_dotenv()
