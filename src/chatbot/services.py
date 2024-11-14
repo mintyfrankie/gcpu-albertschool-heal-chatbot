@@ -2,21 +2,19 @@
 Service layer for the chatbot that handles business logic
 """
 
-import os
-from typing import Annotated, Any, Iterator, List, Literal, Optional
+from enum import Enum
+from typing import Annotated, Any, Iterator
 
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse.callback import CallbackHandler
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel, Field, model_validator
 from typing_extensions import TypedDict
 
-from chatbot import format_response, format_severity_response
+from chatbot import format_severity_response
 from chatbot.utils import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
@@ -44,6 +42,31 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 
+class Severity(Enum):
+    MILD = "Mild"
+    MODERATE = "Moderate"
+    SEVERE = "Severe"
+    OTHER = "Other"
+
+
+def construct_chain(severity: Severity, llm: ChatGoogleGenerativeAI) -> Any:
+    elem_mapping = {
+        Severity.MILD: (MILD_SEVERITY_PROMPT_TEMPLATE, MildSeverityResponse),
+        Severity.MODERATE: (
+            MODERATE_SEVERITY_PROMPT_TEMPLATE,
+            ModerateSeverityResponse,
+        ),
+        Severity.SEVERE: (SEVERE_SEVERITY_PROMPT_TEMPLATE, SevereSeverityResponse),
+        Severity.OTHER: (OTHER_SEVERITY_PROMPT_TEMPLATE, OtherSeverityResponse),
+    }
+
+    prompt, pydantic_object = elem_mapping[severity]
+    prompt = PromptTemplate.from_template(prompt)
+    parser = PydanticOutputParser(pydantic_object=pydantic_object)
+
+    return prompt | llm | parser
+
+
 def get_llm_response(
     state: State,
 ) -> dict:
@@ -62,20 +85,7 @@ def get_llm_response(
     except Exception as e:
         print(f"Error {e}")
 
-    if classification_response_str == "Mild":
-        triage_prompt = PromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
-    elif classification_response_str == "Moderate":
-        triage_prompt = PromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
-    elif classification_response_str == "Severe":
-        triage_prompt = PromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
-    else:
-        triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
-
-    triage_chain = triage_prompt | llm | triage_parser
+    triage_chain = construct_chain(Severity(classification_response_str), llm)
 
     try:
         print(f"state['messages']: {state["messages"]}\n\n")
