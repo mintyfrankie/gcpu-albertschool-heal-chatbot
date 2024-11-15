@@ -323,8 +323,11 @@ pydantic==2.9.2
     # via langchain-google-vertexai
     # via langfuse
     # via langsmith
+    # via pydantic-settings
 pydantic-core==2.23.4
     # via pydantic
+pydantic-settings==2.6.1
+    # via gcpu-albert-hackathon
 pydeck==0.9.1
     # via streamlit
 pydub==0.25.1
@@ -343,6 +346,7 @@ python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.0.1
     # via gcpu-albert-hackathon
+    # via pydantic-settings
 python-multipart==0.0.12
     # via gradio
 pytz==2024.2
