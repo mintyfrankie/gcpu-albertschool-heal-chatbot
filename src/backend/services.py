@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import logging
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
+from langgraph.graph.state import CompiledStateGraph
 from langchain.schema import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -35,7 +36,6 @@ from backend.utils import (
     SeverityClassificationResponse,
 )
 
-# Configure logging
 logger = logging.getLogger(__name__)
 load_dotenv()
 
@@ -174,7 +174,9 @@ def other_severity_node(state: ChatState) -> dict[str, list]:
     }
 
 
-def main_graph() -> tuple[dict, Any, ChatGoogleGenerativeAI, MemorySaver]:
+def main_graph() -> (
+    tuple[dict, CompiledStateGraph, ChatGoogleGenerativeAI, MemorySaver]
+):
     """Initialize and configure the main graph workflow.
 
     Returns:
@@ -189,7 +191,6 @@ def main_graph() -> tuple[dict, Any, ChatGoogleGenerativeAI, MemorySaver]:
         max_tokens=None,
     )
 
-    # Create conditional graph
     graph = StateGraph(ChatState)
     graph.add_node("mild", mild_severity_node)
     graph.add_node("moderate", moderate_severity_node)
@@ -207,13 +208,11 @@ def main_graph() -> tuple[dict, Any, ChatGoogleGenerativeAI, MemorySaver]:
         },
     )
 
-    # Add edges to the respective endpoint nodes
     graph.add_edge("mild", END)
     graph.add_edge("moderate", END)
     graph.add_edge("severe", END)
     graph.add_edge("other", END)
 
-    # Run the graph
     compiled_graph = graph.compile(base_memory)
     config_dict = {
         "configurable": {"thread_id": "3"},
@@ -242,7 +241,15 @@ def process_user_input(
     Returns:
         Dictionary containing the response
     """
-    return graph.invoke(
-        {"responses": "", "messages": [("user", user_input)]},
-        config=config,
-    )
+    try:
+        result = graph.invoke(
+            {
+                "responses": [],
+                "messages": [HumanMessage(content=user_input)],
+            },
+            config=config,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error processing input: {str(e)}")
+        raise RuntimeError(f"Failed to process input: {str(e)}") from e
