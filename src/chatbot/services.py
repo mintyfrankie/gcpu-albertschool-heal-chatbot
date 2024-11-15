@@ -2,26 +2,24 @@
 Service layer for the chatbot that handles business logic
 """
 
-import os
-from typing import Annotated, Any, Iterator, List, Literal, Optional
+from typing import Annotated, Any, Iterator
 
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
+from langchain.schema import HumanMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse.callback import CallbackHandler
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel, Field, model_validator
 from typing_extensions import TypedDict
 
-from chatbot import format_response, format_severity_response
+from chatbot import format_severity_response
 from chatbot.utils import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
     MODERATE_SEVERITY_PROMPT_TEMPLATE,
-    ORIGINAL_PROMPT_TEMPLATE,
     OTHER_SEVERITY_PROMPT_TEMPLATE,
     SEVERE_SEVERITY_PROMPT_TEMPLATE,
     MildSeverityResponse,
@@ -35,13 +33,19 @@ from chatbot.utils.langfuse import get_langfuse_callback_handler
 
 load_dotenv()
 
-memory = MemorySaver()
-
 
 # Build basic chatbot
 class State(TypedDict):
     responses: Any
     messages: Annotated[list, add_messages]
+
+
+def get_all_user_messages(all_messages):
+    user_messages = []
+    for i, message in enumerate(all_messages):
+        if isinstance(message, HumanMessage):
+            user_messages.append(f"User Input {i}: {message.content}")
+    return user_messages
 
 
 def get_llm_response(
@@ -56,11 +60,14 @@ def get_llm_response(
 
     try:
         classification_response = classification_chain.invoke(
-            {"user_input": state["messages"]},
+            {
+                "user_input": state["messages"][-1].content,
+                "chat_history": get_all_user_messages(state["messages"]),
+            },
         )
         classification_response_str = format_severity_response(classification_response)
     except Exception as e:
-        print(f"Error {e}")
+        print(f"Error:\n {e}")
 
     if classification_response_str == "Mild":
         triage_prompt = PromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
@@ -73,18 +80,17 @@ def get_llm_response(
         triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
     else:
         triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
+        triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
 
     triage_chain = triage_prompt | llm | triage_parser
 
     try:
-        print(f"state['messages']: {state["messages"]}\n\n")
         triage_response = triage_chain.invoke(
             {"user_input": state["messages"]},
         )
-        triage_response_str = f"{triage_response.model_dump().get("Response")}"
+        triage_response_str = triage_response.model_dump().get("Response")
     except Exception as e:
-        print(f"Error {e}")
+        print(f"Error:\n {e}")
 
     return {
         "response": [triage_response],
@@ -94,6 +100,7 @@ def get_llm_response(
 
 def main_graph():
     base_memory = MemorySaver()
+    base_memory.storage.clear()
     graph_builder = StateGraph(State)
 
     base_llm = ChatGoogleGenerativeAI(
@@ -139,37 +146,35 @@ def stream_graph_updates(
         config,
         stream_mode="values",
     )
-    # *_, last_response = events
-    # print(f"LAST RESPONSE: {last_response["messages"][-1].content}")
     return events
 
 
-def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
-    """Generate a response based on user input and chat history."""
-    parser = PydanticOutputParser(pydantic_object=TriageResponse)
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
-        temperature=0,
-    )
+# def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
+#     """Generate a response based on user input and chat history."""
+#     parser = PydanticOutputParser(pydantic_object=TriageResponse)
+#     llm = ChatGoogleGenerativeAI(
+#         model="gemini-1.5-pro",
+#         temperature=0,
+#     )
 
-    prompt = PromptTemplate.from_template(ORIGINAL_PROMPT_TEMPLATE)
+#     prompt = PromptTemplate.from_template(ORIGINAL_PROMPT_TEMPLATE)
 
-    chain = prompt | llm | parser
+#     chain = prompt | llm | parser
 
-    response = chain.invoke(
-        {"chat_history": chat_history, "user_question": user_question},
-        config={"callbacks": [get_langfuse_callback_handler()]},
-    )
+#     response = chain.invoke(
+#         {"chat_history": chat_history, "user_question": user_question},
+#         config={"callbacks": [get_langfuse_callback_handler()]},
+#     )
 
-    return response
+#     return response
 
 
 config, graph, llm, memory = main_graph()
 
 if __name__ == "__main__":
     while True:
-        # user_input = input("User: ")
-        user_input = "I have a headache and a cough"
+        user_input = input("User: ")
+        # user_input = "I have a headache and a cough"
         if user_input.lower() in ["quit", "exit", "q"]:
             print("Goodbye!")
             break

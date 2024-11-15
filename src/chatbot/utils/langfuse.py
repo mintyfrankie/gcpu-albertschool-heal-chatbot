@@ -2,13 +2,14 @@
 Integration with Langfuse
 """
 
-from langfuse.callback import CallbackHandler
-
-from dotenv import load_dotenv
-
 import os
 
-load_dotenv()
+from langfuse.callback import CallbackHandler
+
+# from dotenv import load_dotenv
+
+
+# load_dotenv()
 
 
 def get_langfuse_callback_handler():
