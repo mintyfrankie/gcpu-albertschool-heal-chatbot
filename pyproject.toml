@@ -39,4 +39,4 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/chatbot", "src/web"]
+packages = ["src/chatbot", "src/telegram_worker", "src/web"]
