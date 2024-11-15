@@ -3,7 +3,7 @@ name = "gcpu-albert-hackathon"
 version = "0.1.0"
 description = "Add your description here"
 authors = [
-    { name = "mintyfrankie", email = "77310871+mintyfrankie@users.noreply.github.com" }
+    { name = "mintyfrankie", email = "77310871+mintyfrankie@users.noreply.github.com" },
 ]
 dependencies = [
     "streamlit>=1.40.0",
@@ -11,16 +11,13 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "langchain-google-genai>=2.0.4",
     "langchain>=0.3.7",
-    "langfuse>=2.53.9",
-    "langchain-google-vertexai>=2.0.7",
     "langgraph>=0.2.45",
     "pydantic>=2.9.2",
-    "typing-extensions>=4.12.2",
     "pytelegrambotapi>=4.23.0",
     "pydantic-settings>=2.6.1",
 ]
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 
 [build-system]
 requires = ["hatchling"]
@@ -28,12 +25,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "ollama>=0.3.3",
-    "pytest>=8.3.3",
-    "langfuse>=2.53.9",
-]
+dev-dependencies = ["ipykernel>=6.29.5", "pytest>=8.3.3"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
