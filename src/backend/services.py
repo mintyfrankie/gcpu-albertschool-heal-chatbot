@@ -1,19 +1,25 @@
 """
-Service layer for the chatbot that handles business logic
+Service layer for the chatbot that handles business logic and implements a LangGraph-based
+triage system with severity classification.
+
+The graph workflow:
+1. Takes user input and classifies severity
+2. Routes to appropriate severity handler node
+3. Generates appropriate response based on severity level
 """
 
-from typing import Annotated, Any, Iterator
-
+from typing import Annotated, Any
+from dataclasses import dataclass
+import logging
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
-from langchain.schema import HumanMessage
-from langchain_core.prompts import PromptTemplate
+from langchain.schema import HumanMessage, AIMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from typing_extensions import TypedDict
 
 from backend import format_severity_response
 from backend.utils import (
@@ -29,45 +35,78 @@ from backend.utils import (
     SeverityClassificationResponse,
 )
 
+# Configure logging
+logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-# Build basic chatbot
-class State(TypedDict):
-    responses: Any
-    messages: Annotated[list, add_messages]
+@dataclass
+class ChatState:
+    """State management for chat interactions."""
+
+    responses: list[dict[str, Any]]
+    messages: Annotated[list[HumanMessage | AIMessage], add_messages]
 
 
-def get_all_user_messages(all_messages):
-    user_messages = []
-    for i, message in enumerate(all_messages):
-        if isinstance(message, HumanMessage):
-            user_messages.append(f"User Input {i}: {message.content}")
-    return user_messages
+def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]:
+    """Extract all user messages from chat history.
+
+    Args:
+        messages: List of chat messages
+
+    Returns:
+        List of formatted user message strings
+    """
+    return [
+        f"User Input {i}: {msg.content}"
+        for i, msg in enumerate(messages)
+        if isinstance(msg, HumanMessage)
+    ]
 
 
-# Define severity classification node
-def classify_severity(state: State) -> str:
-    classification_prompt = PromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
-    classification_parser = PydanticOutputParser(
-        pydantic_object=SeverityClassificationResponse
-    )
-    classification_chain = classification_prompt | llm | classification_parser
-    classification_response = classification_chain.invoke(
-        {
-            "user_input": state["messages"][-1].content,
-            "chat_history": get_all_user_messages(state["messages"]),
-        }
-    )
-    return format_severity_response(classification_response)
+def classify_severity(state: ChatState) -> str:
+    """Classify severity of user input with error handling.
+
+    Args:
+        state: Current chat state
+
+    Returns:
+        Classified severity level
+
+    Raises:
+        ValueError: If classification fails
+    """
+    try:
+        classification_prompt = ChatPromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
+        classification_parser = PydanticOutputParser(
+            pydantic_object=SeverityClassificationResponse
+        )
+        classification_chain = classification_prompt | llm | classification_parser
+        classification_response = classification_chain.invoke(
+            {
+                "user_input": state.messages[-1].content,
+                "chat_history": get_all_user_messages(state.messages),
+            }
+        )
+        return format_severity_response(classification_response)
+    except Exception as e:
+        logger.error(f"Classification failed: {str(e)}")
+        raise ValueError("Failed to classify severity") from e
 
 
-# Define nodes for different severity levels
-def mild_severity_node(state: State) -> dict:
-    triage_prompt = PromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
+def mild_severity_node(state: ChatState) -> dict[str, list]:
+    """Handle mild severity cases.
+
+    Args:
+        state: Current chat state
+
+    Returns:
+        Dictionary containing response and messages
+    """
+    triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response = triage_chain.invoke({"user_input": state.messages})
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -75,11 +114,19 @@ def mild_severity_node(state: State) -> dict:
     }
 
 
-def moderate_severity_node(state: State) -> dict:
-    triage_prompt = PromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
+def moderate_severity_node(state: ChatState) -> dict[str, list]:
+    """Handle moderate severity cases.
+
+    Args:
+        state: Current chat state
+
+    Returns:
+        Dictionary containing response and messages
+    """
+    triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response = triage_chain.invoke({"user_input": state.messages})
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -87,11 +134,19 @@ def moderate_severity_node(state: State) -> dict:
     }
 
 
-def severe_severity_node(state: State) -> dict:
-    triage_prompt = PromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
+def severe_severity_node(state: ChatState) -> dict[str, list]:
+    """Handle severe severity cases.
+
+    Args:
+        state: Current chat state
+
+    Returns:
+        Dictionary containing response and messages
+    """
+    triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response = triage_chain.invoke({"user_input": state.messages})
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -99,11 +154,19 @@ def severe_severity_node(state: State) -> dict:
     }
 
 
-def other_severity_node(state: State) -> dict:
-    triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
+def other_severity_node(state: ChatState) -> dict[str, list]:
+    """Handle other severity cases.
+
+    Args:
+        state: Current chat state
+
+    Returns:
+        Dictionary containing response and messages
+    """
+    triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response = triage_chain.invoke({"user_input": state.messages})
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -111,7 +174,12 @@ def other_severity_node(state: State) -> dict:
     }
 
 
-def main_graph():
+def main_graph() -> tuple[dict, Any, ChatGoogleGenerativeAI, MemorySaver]:
+    """Initialize and configure the main graph workflow.
+
+    Returns:
+        Tuple containing config, compiled graph, LLM instance, and memory
+    """
     base_memory = MemorySaver()
     base_memory.storage.clear()
 
@@ -120,8 +188,9 @@ def main_graph():
         temperature=0,
         max_tokens=None,
     )
+
     # Create conditional graph
-    graph = StateGraph(State)
+    graph = StateGraph(ChatState)
     graph.add_node("mild", mild_severity_node)
     graph.add_node("moderate", moderate_severity_node)
     graph.add_node("severe", severe_severity_node)
@@ -137,7 +206,6 @@ def main_graph():
             "Other": "other",
         },
     )
-    # Define different endpoints for each severity level
 
     # Add edges to the respective endpoint nodes
     graph.add_edge("mild", END)
@@ -161,38 +229,20 @@ def main_graph():
 config, graph, llm, memory = main_graph()
 
 
-def stream_graph_updates(
+def process_user_input(
     user_input: str,
-    config: RunnableConfig = {
-        "configurable": {"thread_id": "3"},
-    },
-) -> Iterator[dict[str, Any] | Any]:
-    events = graph.stream(
+    config: RunnableConfig = {"configurable": {"thread_id": "3"}},
+) -> dict[str, Any]:
+    """Process user input through the graph workflow.
+
+    Args:
+        user_input: User's message
+        config: Graph configuration
+
+    Returns:
+        Dictionary containing the response
+    """
+    return graph.invoke(
         {"responses": "", "messages": [("user", user_input)]},
-        config,
-        stream_mode="values",
+        config=config,
     )
-    return events
-
-
-# if __name__ == "__main__":
-#     while True:
-#         user_input = input("User: ")
-#         # user_input = "I have a headache and a cough"
-#         if user_input.lower() in ["quit", "exit", "q"]:
-#             print("Goodbye!")
-#             break
-
-#         final_response = stream_graph_updates(user_input, config)
-
-#         for event in events:
-#             try:
-#                 # Display human message if available
-#                 if "messages" in event and event["messages"]:
-#                     event["messages"][-1].pretty_print()
-#             except Exception as e:
-#                 print("Error while processing messages:", e)
-
-#     #     QUERY = "I have a headache and a cough"
-#     #     response = get_response(QUERY, [])
-#     #     print(response)
