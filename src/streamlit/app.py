@@ -111,8 +111,7 @@ st.markdown(
 
         [data-testid="stChatInput"] {
             position: fixed;
-            bottom: 5rem; 
-            
+            bottom: 3rem; 
             background: white;
             z-index: 99;
         }
