@@ -27,7 +27,6 @@ from chatbot.utils import (
     OtherSeverityResponse,
     SevereSeverityResponse,
     SeverityClassificationResponse,
-    TriageResponse,
 )
 from chatbot.utils.langfuse import get_langfuse_callback_handler
 
@@ -48,50 +47,65 @@ def get_all_user_messages(all_messages):
     return user_messages
 
 
-def get_llm_response(
-    state: State,
-) -> dict:
+# Define severity classification node
+def classify_severity(state: State) -> str:
     classification_prompt = PromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
     classification_parser = PydanticOutputParser(
         pydantic_object=SeverityClassificationResponse
     )
-
     classification_chain = classification_prompt | llm | classification_parser
+    classification_response = classification_chain.invoke(
+        {
+            "user_input": state["messages"][-1].content,
+            "chat_history": get_all_user_messages(state["messages"]),
+        }
+    )
+    return format_severity_response(classification_response)
 
-    try:
-        classification_response = classification_chain.invoke(
-            {
-                "user_input": state["messages"][-1].content,
-                "chat_history": get_all_user_messages(state["messages"]),
-            },
-        )
-        classification_response_str = format_severity_response(classification_response)
-    except Exception as e:
-        print(f"Error:\n {e}")
 
-    if classification_response_str == "Mild":
-        triage_prompt = PromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
-    elif classification_response_str == "Moderate":
-        triage_prompt = PromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
-    elif classification_response_str == "Severe":
-        triage_prompt = PromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
-    else:
-        triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-        triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
-
+# Define nodes for different severity levels
+def mild_severity_node(state: State) -> dict:
+    triage_prompt = PromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
+    triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
+    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response_str = triage_response.model_dump().get("Response")
+    return {
+        "response": [triage_response],
+        "messages": [("ai", triage_response_str)],
+    }
 
-    try:
-        triage_response = triage_chain.invoke(
-            {"user_input": state["messages"]},
-        )
-        triage_response_str = triage_response.model_dump().get("Response")
-    except Exception as e:
-        print(f"Error:\n {e}")
 
+def moderate_severity_node(state: State) -> dict:
+    triage_prompt = PromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
+    triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
+    triage_chain = triage_prompt | llm | triage_parser
+    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response_str = triage_response.model_dump().get("Response")
+    return {
+        "response": [triage_response],
+        "messages": [("ai", triage_response_str)],
+    }
+
+
+def severe_severity_node(state: State) -> dict:
+    triage_prompt = PromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
+    triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
+    triage_chain = triage_prompt | llm | triage_parser
+    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response_str = triage_response.model_dump().get("Response")
+    return {
+        "response": [triage_response],
+        "messages": [("ai", triage_response_str)],
+    }
+
+
+def other_severity_node(state: State) -> dict:
+    triage_prompt = PromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
+    triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
+    triage_chain = triage_prompt | llm | triage_parser
+    triage_response = triage_chain.invoke({"user_input": state["messages"]})
+    triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
         "messages": [("ai", triage_response_str)],
@@ -101,27 +115,39 @@ def get_llm_response(
 def main_graph():
     base_memory = MemorySaver()
     base_memory.storage.clear()
-    graph_builder = StateGraph(State)
 
     base_llm = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-001",
         temperature=0,
         max_tokens=None,
     )
-    # llm = ChatVertexAI(model="gemini-1.5-flash-001", temperature=0, max_tokens=None)
+    # Create conditional graph
+    graph = StateGraph(State)
+    graph.add_node("mild", mild_severity_node)
+    graph.add_node("moderate", moderate_severity_node)
+    graph.add_node("severe", severe_severity_node)
+    graph.add_node("other", other_severity_node)
 
-    # The first argument is the unique node name
-    # The second argument is the function or object that will be called whenever the node is used.
-    graph_builder.add_node("chatbot", get_llm_response)
+    graph.add_conditional_edges(
+        START,
+        classify_severity,
+        {
+            "Mild": "mild",
+            "Moderate": "moderate",
+            "Severe": "severe",
+            "Other": "other",
+        },
+    )
+    # Define different endpoints for each severity level
 
-    # Set entry point
-    graph_builder.add_edge(START, "chatbot")
-    # Set end point
-    graph_builder.add_edge("chatbot", END)
+    # Add edges to the respective endpoint nodes
+    graph.add_edge("mild", END)
+    graph.add_edge("moderate", END)
+    graph.add_edge("severe", END)
+    graph.add_edge("other", END)
 
     # Run the graph
-    # graph = graph_builder.compile()
-    compiled_graph = graph_builder.compile(checkpointer=base_memory)
+    compiled_graph = graph.compile(base_memory)
     config_dict = {
         "configurable": {"thread_id": "3"},
         # "callbacks": [get_langfuse_callback_handler()],
@@ -134,6 +160,9 @@ def main_graph():
     )
 
 
+config, graph, llm, memory = main_graph()
+
+
 def stream_graph_updates(
     user_input: str,
     config: dict = {
@@ -141,6 +170,7 @@ def stream_graph_updates(
         # "callbacks": [get_langfuse_callback_handler()],
     },
 ) -> Iterator[dict[str, Any] | Any]:
+
     events = graph.stream(
         {"responses": "", "messages": [("user", user_input)]},
         config,
@@ -149,46 +179,24 @@ def stream_graph_updates(
     return events
 
 
-# def get_response(user_question: str, chat_history: list[str]) -> TriageResponse:
-#     """Generate a response based on user input and chat history."""
-#     parser = PydanticOutputParser(pydantic_object=TriageResponse)
-#     llm = ChatGoogleGenerativeAI(
-#         model="gemini-1.5-pro",
-#         temperature=0,
-#     )
+# if __name__ == "__main__":
+#     while True:
+#         user_input = input("User: ")
+#         # user_input = "I have a headache and a cough"
+#         if user_input.lower() in ["quit", "exit", "q"]:
+#             print("Goodbye!")
+#             break
 
-#     prompt = PromptTemplate.from_template(ORIGINAL_PROMPT_TEMPLATE)
+#         final_response = stream_graph_updates(user_input, config)
 
-#     chain = prompt | llm | parser
+#         for event in events:
+#             try:
+#                 # Display human message if available
+#                 if "messages" in event and event["messages"]:
+#                     event["messages"][-1].pretty_print()
+#             except Exception as e:
+#                 print("Error while processing messages:", e)
 
-#     response = chain.invoke(
-#         {"chat_history": chat_history, "user_question": user_question},
-#         config={"callbacks": [get_langfuse_callback_handler()]},
-#     )
-
-#     return response
-
-
-config, graph, llm, memory = main_graph()
-
-if __name__ == "__main__":
-    while True:
-        user_input = input("User: ")
-        # user_input = "I have a headache and a cough"
-        if user_input.lower() in ["quit", "exit", "q"]:
-            print("Goodbye!")
-            break
-
-        events = stream_graph_updates(user_input, config)
-
-        for event in events:
-            try:
-                # Display human message if available
-                if "messages" in event and event["messages"]:
-                    event["messages"][-1].pretty_print()
-            except Exception as e:
-                print("Error while processing messages:", e)
-
-    #     QUERY = "I have a headache and a cough"
-    #     response = get_response(QUERY, [])
-    #     print(response)
+#     #     QUERY = "I have a headache and a cough"
+#     #     response = get_response(QUERY, [])
+#     #     print(response)

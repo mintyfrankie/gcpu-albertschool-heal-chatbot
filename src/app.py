@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 
 # from chatbot import format_response, stream_graph_updates
-from chatbot.services import main_graph, stream_graph_updates
+from chatbot.services import stream_graph_updates
+
+# from chatbot.services import get_llm_response
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +36,6 @@ for message in st.session_state.chat_history:
         with st.chat_message("Human"):
             st.write(message.content)
 
-# config, graph, llm, memory = main_graph()
 
 # Capture user input
 user_query: str | None = st.chat_input("Type your message here...")
