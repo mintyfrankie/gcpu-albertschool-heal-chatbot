@@ -1,4 +1,4 @@
-from chatbot.utils.output_parsers import (
+from backend.utils.output_parsers import (
     MildSeverityResponse,
     ModerateSeverityResponse,
     OtherSeverityResponse,
@@ -6,11 +6,10 @@ from chatbot.utils.output_parsers import (
     SeverityClassificationResponse,
     TriageResponse,
 )
-from chatbot.utils.prompt_templates import (
+from backend.utils.prompt_templates import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
     MODERATE_SEVERITY_PROMPT_TEMPLATE,
-    ORIGINAL_PROMPT_TEMPLATE,
     OTHER_SEVERITY_PROMPT_TEMPLATE,
     SEVERE_SEVERITY_PROMPT_TEMPLATE,
 )
@@ -25,7 +24,6 @@ __all__ = [
     "MAIN_PROMPT_TEMPLATE",
     "MILD_SEVERITY_PROMPT_TEMPLATE",
     "MODERATE_SEVERITY_PROMPT_TEMPLATE",
-    "ORIGINAL_PROMPT_TEMPLATE",
     "OTHER_SEVERITY_PROMPT_TEMPLATE",
     "SEVERE_SEVERITY_PROMPT_TEMPLATE",
 ]
