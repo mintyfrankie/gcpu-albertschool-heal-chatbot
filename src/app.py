@@ -6,10 +6,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 
-# from chatbot import format_response, stream_graph_updates
-from chatbot.services import stream_graph_updates
-
-# from chatbot.services import get_llm_response
+from backend.services import stream_graph_updates
 
 # Load environment variables
 load_dotenv()

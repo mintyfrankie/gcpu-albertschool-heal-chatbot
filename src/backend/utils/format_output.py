@@ -2,7 +2,7 @@
 Utility functions
 """
 
-from chatbot.utils import SeverityClassificationResponse, TriageResponse
+from backend.utils import SeverityClassificationResponse, TriageResponse
 
 
 def format_severity_response(response: SeverityClassificationResponse) -> str:

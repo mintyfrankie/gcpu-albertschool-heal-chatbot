@@ -38,4 +38,4 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/chatbot"]
+packages = ["src/backend"]

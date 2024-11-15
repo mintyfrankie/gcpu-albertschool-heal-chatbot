@@ -15,8 +15,8 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
-from chatbot import format_severity_response
-from chatbot.utils import (
+from backend import format_severity_response
+from backend.utils import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
     MODERATE_SEVERITY_PROMPT_TEMPLATE,
@@ -28,7 +28,7 @@ from chatbot.utils import (
     SevereSeverityResponse,
     SeverityClassificationResponse,
 )
-from chatbot.utils.langfuse import get_langfuse_callback_handler
+from backend.utils.langfuse import get_langfuse_callback_handler
 
 load_dotenv()
 

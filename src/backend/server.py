@@ -5,7 +5,7 @@ FastAPI server wrapper in charge of handling requests and responses
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from chatbot import format_response, get_response
+from backend import format_response, get_response
 
 app = FastAPI(
     title="Medical Triage Chatbot API", description="API for a Medical Triage Chatbot"
