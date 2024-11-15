@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
 from langchain.schema import HumanMessage
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse.callback import CallbackHandler
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -28,7 +28,6 @@ from backend.utils import (
     SevereSeverityResponse,
     SeverityClassificationResponse,
 )
-from backend.utils.langfuse import get_langfuse_callback_handler
 
 load_dotenv()
 
@@ -150,7 +149,6 @@ def main_graph():
     compiled_graph = graph.compile(base_memory)
     config_dict = {
         "configurable": {"thread_id": "3"},
-        # "callbacks": [get_langfuse_callback_handler()],
     }
     return (
         config_dict,
@@ -165,12 +163,10 @@ config, graph, llm, memory = main_graph()
 
 def stream_graph_updates(
     user_input: str,
-    config: dict = {
+    config: RunnableConfig = {
         "configurable": {"thread_id": "3"},
-        # "callbacks": [get_langfuse_callback_handler()],
     },
 ) -> Iterator[dict[str, Any] | Any]:
-
     events = graph.stream(
         {"responses": "", "messages": [("user", user_input)]},
         config,
