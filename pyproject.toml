@@ -6,7 +6,6 @@ authors = [
     { name = "mintyfrankie", email = "77310871+mintyfrankie@users.noreply.github.com" }
 ]
 dependencies = [
-    "gradio>=5.4.0",
     "streamlit>=1.40.0",
     "langchain-core>=0.3.15",
     "python-dotenv>=1.0.1",
