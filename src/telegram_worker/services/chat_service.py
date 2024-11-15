@@ -1,6 +1,6 @@
 from typing import Any
 import google.generativeai as genai
-from ..config import settings
+from telegram_worker.config import settings
 
 
 class ChatService:
