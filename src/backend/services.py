@@ -295,27 +295,21 @@ def process_user_input(
 
         logger.info(f"Raw graph result: {result}")
 
-        # Extract the response from the result
         if isinstance(result, dict):
-            # Handle messages field containing LangChain Message objects
             if "messages" in result and isinstance(result["messages"], list):
                 formatted_messages = []
                 for msg in result["messages"]:
                     if hasattr(msg, "content"):
-                        # For AI messages
                         if hasattr(msg, "type") and msg.type == "ai":
                             formatted_messages.append(("ai", msg.content))
-                        # For human messages
                         elif isinstance(msg, HumanMessage):
                             formatted_messages.append(("human", msg.content))
-                        # For AIMessage
                         elif isinstance(msg, AIMessage):
                             formatted_messages.append(("ai", msg.content))
 
                 if formatted_messages:
                     return {"messages": formatted_messages}
 
-            # Handle response field with Pydantic models
             if "response" in result and result["response"]:
                 response = result["response"]
                 if isinstance(response, list) and response:
@@ -325,7 +319,6 @@ def process_user_input(
                         if response_text:
                             return {"messages": [("ai", response_text)]}
 
-        # Fallback response if no valid format is found
         return {
             "messages": [
                 ("ai", "I apologize, but I couldn't process your request properly.")
