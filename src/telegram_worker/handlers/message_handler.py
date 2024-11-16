@@ -1,105 +1,115 @@
+"""Message handler module for Telegram bot messages.
+
+This module contains the MessageHandler class which processes different types
+of messages received by the Telegram bot and generates appropriate responses.
+It handles both command messages and regular text messages.
+
+Attributes:
+    logger (logging.Logger): Module level logger for message handling operations
+"""
+
+import logging
+import telebot
 from telebot.types import Message
 from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import AIMessage
 from backend.services import process_user_input
-import logging
-from typing import Any, Union
+from typing import Any
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class MessageHandler:
-    """Handler for processing telegram messages using LangGraph-based triage system."""
+    """Handler for processing Telegram bot messages.
 
-    def __init__(self) -> None:
-        """Initialize the message handler."""
-        self.config: RunnableConfig = {"configurable": {}}
+    This class contains methods for handling different types of messages
+    and commands received by the Telegram bot. It manages message processing,
+    error handling, and response generation.
 
-    def handle_start(self, message: Message) -> str:
-        """
-        Handle the /start command.
+    Attributes:
+        config (RunnableConfig): Configuration for message processing with callbacks
+        bot (telebot.TeleBot): Reference to the Telegram bot instance for sending messages
+    """
+
+    def __init__(self, bot: telebot.TeleBot) -> None:
+        """Initialize the message handler.
 
         Args:
-            message (Message): Telegram message object.
-
-        Returns:
-            str: Welcome message.
+            bot (telebot.TeleBot): Reference to the Telegram bot instance
+                                  for sending responses
         """
-        return (
-            "👋 Hi! I'm a mental health triage bot powered by LangGraph. "
-            "I can help assess the severity of your situation and provide appropriate guidance. "
-            "Feel free to share what's on your mind."
+        self.bot: telebot.TeleBot = bot
+        self.config: RunnableConfig = RunnableConfig(
+            callbacks=None, tags=["telegram"], metadata={"source": "telegram"}
         )
 
-    def handle_reset(self, message: Message) -> str:
-        """
-        Handle the /reset command.
+    def handle_text(self, message: Message) -> None:
+        """Handle incoming text messages from users.
+
+        Processes text messages from users and generates appropriate responses
+        using the backend service. Handles any errors that occur during processing.
 
         Args:
-            message (Message): Telegram message object.
-
-        Returns:
-            str: Reset confirmation message.
+            message (Message): Telegram message object containing the user's text
+                             and metadata
         """
-        return "Conversation has been reset. You can start fresh."
+        try:
+            if message.text is None:
+                logger.warning("Received message with no text content")
+                return
 
-    def _extract_content(self, message: Union[AIMessage, tuple, str, Any]) -> str:
-        """
-        Extract content from various message formats.
+            response_data: dict[str, Any] = process_user_input(
+                message.text, config=self.config
+            )
+            response_text: str = response_data["response"]
+            self._send_response(message.chat.id, response_text)
+        except Exception as e:
+            logger.error(f"Error processing message: {str(e)}")
+            self._send_error_message(message.chat.id)
+
+    def handle_start(self, message: Message) -> None:
+        """Handle the /start command from users.
+
+        Sends a welcome message to new users starting the bot, explaining
+        its capabilities and how to use it.
 
         Args:
-            message: Message object that could be in various formats.
+            message (Message): Telegram message object containing the command
+                             and user metadata
+        """
+        welcome_text: str = (
+            "👋 Welcome! I'm your AI medical assistant.\n\n"
+            "I can help you assess medical situations and provide guidance. "
+            "Please describe your symptoms or concerns."
+        )
+        self._send_response(message.chat.id, welcome_text)
 
-        Returns:
-            str: Extracted content from the message.
+    def _send_response(self, chat_id: int, text: str) -> None:
+        """Send a response message to a specific chat.
+
+        Args:
+            chat_id (int): Telegram chat ID to send the message to
+            text (str): Message text to send to the user
 
         Raises:
-            ValueError: If content cannot be extracted or is None.
+            Exception: If there's an error sending the message
         """
-        if isinstance(message, AIMessage):
-            return str(message.content)
-        elif isinstance(message, tuple) and len(message) == 2:
-            _, content = message
-            return str(content)
-        elif isinstance(message, str):
-            return message
-        else:
-            content = getattr(message, "content", None)
-            if content is None:
-                raise ValueError("Could not extract content from message")
-            return str(content)
+        try:
+            self.bot.send_message(chat_id, text)
+            logger.info(f"Sent response to chat {chat_id}")
+        except Exception as e:
+            logger.error(f"Error sending message: {str(e)}")
+            raise
 
-    def handle_message(self, message: Message) -> str:
-        """
-        Process incoming messages using LangGraph triage system.
+    def _send_error_message(self, chat_id: int) -> None:
+        """Send an error message to a specific chat.
+
+        Sends a user-friendly error message when message processing fails.
 
         Args:
-            message (Message): Telegram message object.
-
-        Returns:
-            str: Response message.
+            chat_id (int): Telegram chat ID to send the error message to
         """
-        if not message.text:
-            return "I can only process text messages. Please send me a text message."
-
-        try:
-            result = process_user_input(
-                user_input=message.text, thread_id=str(message.chat.id)
-            )
-
-            if isinstance(result, dict) and "messages" in result:
-                messages = result["messages"]
-                if messages:
-                    last_message = messages[-1]
-                    try:
-                        return self._extract_content(last_message)
-                    except ValueError as e:
-                        logger.warning(f"Failed to extract content: {e}")
-
-            return (
-                "I'm sorry, I couldn't process your message properly. Please try again."
-            )
-
-        except Exception as e:
-            logger.error(f"Error in handle_message: {str(e)}", exc_info=True)
-            return f"I apologize, but I encountered an error processing your message: {str(e)}"
+        error_text: str = (
+            "Sorry, I encountered an error processing your message. "
+            "Please try again later."
+        )
+        self._send_response(chat_id, error_text)
