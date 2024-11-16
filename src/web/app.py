@@ -6,6 +6,7 @@ TODO: add location sharing capability
 """
 
 from typing import Final
+import logging
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -14,6 +15,10 @@ from web.components.chat import handle_user_input, render_chat_history
 from web.components.header import render_header
 from web.components.styles import CUSTOM_CSS, DISCLAIMER_HTML
 from web.utils.state import initialize_chat_history
+from backend.services import main_graph
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Constants
 PAGE_CONFIG: Final[dict] = {
@@ -27,6 +32,15 @@ PAGE_CONFIG: Final[dict] = {
 def main() -> None:
     """Initialize and run the Streamlit application."""
     load_dotenv()
+
+    # Initialize the graph workflow
+    if "graph_initialized" not in st.session_state:
+        config, graph, llm, memory = main_graph()
+        st.session_state.config = config
+        st.session_state.graph = graph
+        st.session_state.llm = llm
+        st.session_state.memory = memory
+        st.session_state.graph_initialized = True
 
     # Configure page
     st.set_page_config(**PAGE_CONFIG)
