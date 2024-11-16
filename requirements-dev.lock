@@ -185,6 +185,7 @@ parso==0.8.4
 pexpect==4.9.0
     # via ipython
 pillow==11.0.0
+    # via gcpu-albert-hackathon
     # via streamlit
 platformdirs==4.3.6
     # via jupyter-core

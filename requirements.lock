@@ -150,6 +150,7 @@ packaging==24.1
 pandas==2.2.3
     # via streamlit
 pillow==11.0.0
+    # via gcpu-albert-hackathon
     # via streamlit
 propcache==0.2.0
     # via yarl
