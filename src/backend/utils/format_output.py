@@ -2,13 +2,23 @@
 Utility functions
 """
 
-import json
+from backend.utils import SeverityClassificationResponse, TriageResponse
 
 
-def format_response(response: str) -> str:
+def format_severity_response(response: SeverityClassificationResponse) -> str:
     """Format the JSON response into a user-friendly string output."""
     try:
-        response_dict = json.loads(response)
+        response_dict = response.model_dump()
+        formatted_output = f"{response_dict.get('Severity', 'N/A')}"
+        return formatted_output
+    except Exception as e:
+        return f"Error formatting response: {e}"
+
+
+def format_response(response: TriageResponse) -> str:
+    """Format the JSON response into a user-friendly string output."""
+    try:
+        response_dict = response.model_dump()
         formatted_output = (
             f"### Advice:\n{response_dict.get('Advice', 'N/A')}\n\n"
             f"### Severity:\n{response_dict.get('Severity', 'N/A')}\n\n"
@@ -20,5 +30,5 @@ def format_response(response: str) -> str:
         ):
             formatted_output += f"{idx}. {question}\n"
         return formatted_output
-    except (json.JSONDecodeError, KeyError) as e:
+    except Exception as e:
         return f"Error formatting response: {e}"

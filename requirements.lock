@@ -10,8 +10,6 @@
 #   universal: false
 
 -e file:.
-aiofiles==23.2.1
-    # via gradio
 aiohappyeyeballs==2.4.3
     # via aiohttp
 aiohttp==3.10.10
@@ -23,9 +21,7 @@ altair==5.4.1
 annotated-types==0.7.0
     # via pydantic
 anyio==4.6.2.post1
-    # via gradio
     # via httpx
-    # via starlette
 attrs==24.2.0
     # via aiohttp
     # via jsonschema
@@ -43,20 +39,9 @@ charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via streamlit
-    # via typer
-    # via uvicorn
-fastapi==0.115.4
-    # via gradio
-ffmpy==0.4.0
-    # via gradio
-filelock==3.16.1
-    # via huggingface-hub
 frozenlist==1.5.0
     # via aiohttp
     # via aiosignal
-fsspec==2024.10.0
-    # via gradio-client
-    # via huggingface-hub
 gitdb==4.0.11
     # via gitpython
 gitpython==3.1.43
@@ -82,10 +67,6 @@ google-generativeai==0.8.3
 googleapis-common-protos==1.65.0
     # via google-api-core
     # via grpcio-status
-gradio==5.4.0
-    # via gcpu-albert-hackathon
-gradio-client==1.4.2
-    # via gradio
 grpcio==1.67.1
     # via google-api-core
     # via grpcio-status
@@ -93,20 +74,16 @@ grpcio-status==1.67.1
     # via google-api-core
 h11==0.14.0
     # via httpcore
-    # via uvicorn
 httpcore==1.0.6
     # via httpx
 httplib2==0.22.0
     # via google-api-python-client
     # via google-auth-httplib2
 httpx==0.27.2
-    # via gradio
-    # via gradio-client
+    # via langgraph-sdk
     # via langsmith
-    # via safehttpx
-huggingface-hub==0.26.2
-    # via gradio
-    # via gradio-client
+httpx-sse==0.4.0
+    # via langgraph-sdk
 idna==3.10
     # via anyio
     # via httpx
@@ -114,7 +91,6 @@ idna==3.10
     # via yarl
 jinja2==3.1.4
     # via altair
-    # via gradio
     # via pydeck
 jsonpatch==1.33
     # via langchain-core
@@ -131,46 +107,49 @@ langchain-core==0.3.15
     # via langchain
     # via langchain-google-genai
     # via langchain-text-splitters
+    # via langgraph
+    # via langgraph-checkpoint
 langchain-google-genai==2.0.4
     # via gcpu-albert-hackathon
 langchain-text-splitters==0.3.2
     # via langchain
+langgraph==0.2.45
+    # via gcpu-albert-hackathon
+langgraph-checkpoint==2.0.2
+    # via langgraph
+langgraph-sdk==0.1.35
+    # via langgraph
 langsmith==0.1.142
     # via langchain
     # via langchain-core
 markdown-it-py==3.0.0
     # via rich
 markupsafe==2.1.5
-    # via gradio
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
+msgpack==1.1.0
+    # via langgraph-checkpoint
 multidict==6.1.0
     # via aiohttp
     # via yarl
 narwhals==1.13.3
     # via altair
 numpy==1.26.4
-    # via gradio
     # via langchain
     # via pandas
     # via pydeck
     # via streamlit
 orjson==3.10.10
-    # via gradio
+    # via langgraph-sdk
     # via langsmith
 packaging==24.1
     # via altair
-    # via gradio
-    # via gradio-client
-    # via huggingface-hub
     # via langchain-core
     # via streamlit
 pandas==2.2.3
-    # via gradio
     # via streamlit
 pillow==11.0.0
-    # via gradio
     # via streamlit
 propcache==0.2.0
     # via yarl
@@ -193,34 +172,33 @@ pyasn1==0.6.1
 pyasn1-modules==0.4.1
     # via google-auth
 pydantic==2.9.2
-    # via fastapi
+    # via gcpu-albert-hackathon
     # via google-generativeai
-    # via gradio
     # via langchain
     # via langchain-core
     # via langchain-google-genai
     # via langsmith
+    # via pydantic-settings
 pydantic-core==2.23.4
     # via pydantic
+pydantic-settings==2.6.1
+    # via gcpu-albert-hackathon
 pydeck==0.9.1
     # via streamlit
-pydub==0.25.1
-    # via gradio
 pygments==2.18.0
     # via rich
 pyparsing==3.2.0
     # via httplib2
+pytelegrambotapi==4.23.0
+    # via gcpu-albert-hackathon
 python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.0.1
     # via gcpu-albert-hackathon
-python-multipart==0.0.12
-    # via gradio
+    # via pydantic-settings
 pytz==2024.2
     # via pandas
 pyyaml==6.0.2
-    # via gradio
-    # via huggingface-hub
     # via langchain
     # via langchain-core
 referencing==0.35.1
@@ -228,29 +206,20 @@ referencing==0.35.1
     # via jsonschema-specifications
 requests==2.32.3
     # via google-api-core
-    # via huggingface-hub
     # via langchain
     # via langsmith
+    # via pytelegrambotapi
     # via requests-toolbelt
     # via streamlit
 requests-toolbelt==1.0.0
     # via langsmith
 rich==13.9.3
     # via streamlit
-    # via typer
 rpds-py==0.21.0
     # via jsonschema
     # via referencing
 rsa==4.9
     # via google-auth
-ruff==0.7.1
-    # via gradio
-safehttpx==0.1.1
-    # via gradio
-semantic-version==2.10.0
-    # via gradio
-shellingham==1.5.4
-    # via typer
 six==1.16.0
     # via python-dateutil
 smmap==5.0.1
@@ -260,9 +229,6 @@ sniffio==1.3.1
     # via httpx
 sqlalchemy==2.0.36
     # via langchain
-starlette==0.41.2
-    # via fastapi
-    # via gradio
 streamlit==1.40.0
     # via gcpu-albert-hackathon
 tenacity==9.0.0
@@ -271,37 +237,23 @@ tenacity==9.0.0
     # via streamlit
 toml==0.10.2
     # via streamlit
-tomlkit==0.12.0
-    # via gradio
 tornado==6.4.1
     # via streamlit
 tqdm==4.66.6
     # via google-generativeai
-    # via huggingface-hub
-typer==0.12.5
-    # via gradio
 typing-extensions==4.12.2
     # via altair
-    # via fastapi
     # via google-generativeai
-    # via gradio
-    # via gradio-client
-    # via huggingface-hub
     # via langchain-core
     # via pydantic
     # via pydantic-core
     # via sqlalchemy
     # via streamlit
-    # via typer
 tzdata==2024.2
     # via pandas
 uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.2.3
     # via requests
-uvicorn==0.32.0
-    # via gradio
-websockets==12.0
-    # via gradio-client
 yarl==1.17.1
     # via aiohttp
