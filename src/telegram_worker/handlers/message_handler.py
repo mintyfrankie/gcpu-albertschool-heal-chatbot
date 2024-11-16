@@ -38,9 +38,6 @@ class MessageHandler:
                                   for sending responses
         """
         self.bot: telebot.TeleBot = bot
-        self.config: RunnableConfig = RunnableConfig(
-            callbacks=None, tags=["telegram"], metadata={"source": "telegram"}
-        )
 
     def handle_text(self, message: Message) -> None:
         """Handle incoming text messages from users.
@@ -57,13 +54,44 @@ class MessageHandler:
                 logger.warning("Received message with no text content")
                 return
 
-            response_data: dict[str, Any] = process_user_input(
-                message.text, config=self.config
+            logger.info(
+                f"Processing message: {message.text} from chat {message.chat.id}"
             )
-            response_text: str = response_data["response"]
-            self._send_response(message.chat.id, response_text)
+
+            # Create config with required checkpoint keys
+            config: RunnableConfig = RunnableConfig(
+                callbacks=None,
+                tags=["telegram"],
+                metadata={"source": "telegram"},
+                configurable={
+                    "thread_id": str(message.chat.id),
+                    "checkpoint_ns": "telegram",
+                    "checkpoint_id": f"chat_{message.chat.id}",
+                },
+            )
+
+            response_data: dict[str, Any] = process_user_input(
+                message.text, config=config
+            )
+
+            logger.info(f"Received response data: {response_data}")
+
+            # Extract the AI message from the response
+            if "messages" in response_data:
+                messages = response_data["messages"]
+                if isinstance(messages, list) and messages:
+                    for msg in messages:
+                        if isinstance(msg, tuple) and len(msg) == 2:
+                            msg_type, msg_content = msg
+                            if msg_type == "ai" and msg_content:
+                                self._send_response(message.chat.id, msg_content)
+                                return
+
+            logger.error(f"Invalid response format: {response_data}")
+            self._send_error_message(message.chat.id)
+
         except Exception as e:
-            logger.error(f"Error processing message: {str(e)}")
+            logger.error(f"Error processing message: {str(e)}", exc_info=True)
             self._send_error_message(message.chat.id)
 
     def handle_start(self, message: Message) -> None:
