@@ -287,8 +287,8 @@ stack-data==0.6.3
     # via ipython
 streamlit==1.40.0
     # via gcpu-albert-hackathon
-    # via streamlit-geolocation
-streamlit-geolocation==0.0.10
+    # via streamlit-js-eval
+streamlit-js-eval==0.1.7
     # via gcpu-albert-hackathon
 tenacity==9.0.0
     # via langchain
