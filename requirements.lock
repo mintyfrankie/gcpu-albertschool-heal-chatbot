@@ -51,6 +51,7 @@ google-ai-generativelanguage==0.6.10
 google-api-core==2.22.0
     # via google-ai-generativelanguage
     # via google-api-python-client
+    # via google-cloud-vision
     # via google-generativeai
 google-api-python-client==2.151.0
     # via google-generativeai
@@ -59,9 +60,12 @@ google-auth==2.36.0
     # via google-api-core
     # via google-api-python-client
     # via google-auth-httplib2
+    # via google-cloud-vision
     # via google-generativeai
 google-auth-httplib2==0.2.0
     # via google-api-python-client
+google-cloud-vision==3.8.1
+    # via gcpu-albert-hackathon
 google-generativeai==0.8.3
     # via langchain-google-genai
 googleapis-common-protos==1.65.0
@@ -157,9 +161,11 @@ propcache==0.2.0
 proto-plus==1.25.0
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-vision
 protobuf==5.28.3
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-vision
     # via google-generativeai
     # via googleapis-common-protos
     # via grpcio-status
