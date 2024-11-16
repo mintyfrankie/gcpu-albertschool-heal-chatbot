@@ -11,6 +11,7 @@ Typical usage example:
     print(result['messages'])
 """
 
+import os
 from typing import Annotated, Any, Optional
 from dataclasses import dataclass
 import logging
@@ -41,6 +42,9 @@ from backend.utils import (
 
 logger = logging.getLogger(__name__)
 load_dotenv()
+
+GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
 
 
 @dataclass
@@ -204,8 +208,8 @@ def main_graph() -> (
     base_memory.storage.clear()
 
     base_llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-001",
-        temperature=0,
+        model=GEMINI_VERSION,
+        temperature=GEMINI_TEMPERATURE,
         max_tokens=None,
     )
 
