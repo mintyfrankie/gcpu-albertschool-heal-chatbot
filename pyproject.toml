@@ -15,7 +15,7 @@ dependencies = [
     "pydantic>=2.9.2",
     "pytelegrambotapi>=4.23.0",
     "pydantic-settings>=2.6.1",
-    "streamlit-geolocation>=0.0.10",
+    "streamlit-js-eval>=0.1.7",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"

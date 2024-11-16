@@ -9,6 +9,7 @@ from typing import Final
 import logging
 
 import streamlit as st
+from streamlit_js_eval import get_geolocation
 from dotenv import load_dotenv
 
 from web.components.chat import handle_user_input, render_chat_history
@@ -66,6 +67,8 @@ def main() -> None:
             key="image_uploader",
             label_visibility="hidden",
         )
+        if st.checkbox("Check my location"):
+            st.session_state.location = get_geolocation()
         user_query = st.chat_input("How can I help you today?")
         st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
 
