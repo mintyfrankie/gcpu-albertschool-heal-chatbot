@@ -249,7 +249,6 @@ config, graph, llm, memory = main_graph()
 def process_user_input(
     user_input: str,
     config: Optional[RunnableConfig] = None,
-    thread_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Process user input through the graph workflow.
 
@@ -258,21 +257,29 @@ def process_user_input(
 
     Args:
         user_input: User's input message
-        config: Optional graph configuration settings
-        thread_id: Optional thread ID for conversation tracking
+        config: Configuration settings including checkpoint information
 
     Returns:
-        Dictionary containing processed response and messages
+        Dictionary containing:
+            - messages: List of tuples (message_type, content)
+            - response: List of processed responses
 
     Raises:
         RuntimeError: If processing fails at any stage
     """
     try:
-        # Create config with thread_id if provided
-        if thread_id and not config:
-            config = {"configurable": {"thread_id": thread_id}}
-        elif not config:
-            config = {"configurable": {}}
+        if not config:
+            raise ValueError("Config is required for checkpointing")
+
+        if "configurable" not in config or not isinstance(config["configurable"], dict):
+            raise ValueError("Config must contain 'configurable' dictionary")
+
+        required_keys = ["thread_id", "checkpoint_ns", "checkpoint_id"]
+        missing_keys = [
+            key for key in required_keys if key not in config["configurable"]
+        ]
+        if missing_keys:
+            raise ValueError(f"Missing required config keys: {missing_keys}")
 
         result = graph.invoke(
             {
@@ -281,7 +288,46 @@ def process_user_input(
             },
             config=config,
         )
-        return result
+
+        logger.info(f"Raw graph result: {result}")
+
+        # Extract the response from the result
+        if isinstance(result, dict):
+            # Handle messages field containing LangChain Message objects
+            if "messages" in result and isinstance(result["messages"], list):
+                formatted_messages = []
+                for msg in result["messages"]:
+                    if hasattr(msg, "content"):
+                        # For AI messages
+                        if hasattr(msg, "type") and msg.type == "ai":
+                            formatted_messages.append(("ai", msg.content))
+                        # For human messages
+                        elif isinstance(msg, HumanMessage):
+                            formatted_messages.append(("human", msg.content))
+                        # For AIMessage
+                        elif isinstance(msg, AIMessage):
+                            formatted_messages.append(("ai", msg.content))
+
+                if formatted_messages:
+                    return {"messages": formatted_messages}
+
+            # Handle response field with Pydantic models
+            if "response" in result and result["response"]:
+                response = result["response"]
+                if isinstance(response, list) and response:
+                    first_response = response[0]
+                    if hasattr(first_response, "model_dump"):
+                        response_text = first_response.model_dump().get("Response", "")
+                        if response_text:
+                            return {"messages": [("ai", response_text)]}
+
+        # Fallback response if no valid format is found
+        return {
+            "messages": [
+                ("ai", "I apologize, but I couldn't process your request properly.")
+            ]
+        }
+
     except Exception as e:
-        logger.error(f"Error processing input: {str(e)}")
+        logger.error(f"Error processing input: {str(e)}", exc_info=True)
         raise RuntimeError(f"Failed to process input: {str(e)}") from e

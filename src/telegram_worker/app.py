@@ -9,6 +9,7 @@ Attributes:
 """
 
 import logging
+from typing import Optional
 import telebot
 from telebot.types import Message
 from telegram_worker.config import settings
@@ -30,15 +31,21 @@ class TelegramBot:
         message_handler (MessageHandler): Handler instance for processing different message types
     """
 
-    def __init__(self) -> None:
+    def __init__(self, token: str) -> None:
         """Initialize the Telegram bot with configured settings.
 
-        Sets up the bot instance with the token from settings and initializes
-        the message handler.
+        Args:
+            token (str): Telegram bot API token for authentication
         """
-        self.bot: telebot.TeleBot = telebot.TeleBot(settings.TELEGRAM_TOKEN)
-        self.message_handler: MessageHandler = MessageHandler(self.bot)
-        self._setup_handlers()
+        try:
+            logger.info("Initializing Telegram bot...")
+            self.bot: telebot.TeleBot = telebot.TeleBot(token)
+            self.message_handler: MessageHandler = MessageHandler(self.bot)
+            self._setup_handlers()
+            logger.info("Telegram bot initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Telegram bot: {str(e)}", exc_info=True)
+            raise
 
     def _setup_handlers(self) -> None:
         """Set up message handlers for the bot.
@@ -78,8 +85,33 @@ class TelegramBot:
             Exception: If an error occurs while running the bot
         """
         try:
-            logger.info("Starting Telegram bot...")
-            self.bot.polling(none_stop=True)
+            logger.info("Starting Telegram bot polling...")
+            # Add skip_pending=True to skip messages that arrived while the bot was offline
+            self.bot.polling(none_stop=True, interval=0, timeout=20, skip_pending=True)
         except Exception as e:
-            logger.error(f"Error running bot: {str(e)}")
+            logger.error(f"Error running bot: {str(e)}", exc_info=True)
             raise e
+
+
+def create_bot(token: Optional[str] = None) -> TelegramBot:
+    """
+    Create and return a TelegramBot instance.
+
+    Args:
+        token (Optional[str]): Telegram bot token. If not provided, will use from settings.
+
+    Returns:
+        LangChainBot: Initialized bot instance
+    """
+    bot_token = token or settings.TELEGRAM_TOKEN
+    return TelegramBot(bot_token)
+
+
+def main() -> None:
+    """Main entry point for the bot."""
+    bot = create_bot()
+    bot.run()
+
+
+if __name__ == "__main__":
+    main()
