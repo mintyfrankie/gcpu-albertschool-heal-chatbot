@@ -4,7 +4,6 @@ This module provides utility functions for formatting various types of responses
 into consistent, user-friendly formats.
 """
 
-from typing import Optional
 from backend.utils import SeverityClassificationResponse, TriageResponse
 
 

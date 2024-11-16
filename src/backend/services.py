@@ -12,7 +12,7 @@ Typical usage example:
 """
 
 import os
-from typing import Annotated, Any, Optional, Union
+from typing import Annotated, Any, Optional, Literal, TypedDict
 from dataclasses import dataclass
 import logging
 from dotenv import load_dotenv
@@ -57,12 +57,12 @@ class ChatState:
     Attributes:
         responses: List of previous responses
         messages: List of chat messages (human and AI)
-        image: Optional image data for multimodal processing
+        image_data: Optional base64 encoded image string for multimodal processing
     """
 
     responses: list[dict[str, Any]]
     messages: Annotated[list[HumanMessage | AIMessage], add_messages]
-    image: Optional[Image.Image] = None
+    image_data: Optional[str] = None
 
 
 def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]:
@@ -96,7 +96,9 @@ def get_image_str(image: Image.Image) -> str:
     return f"data:image/jpeg;base64,{img_str}"
 
 
-def classify_severity(state: ChatState) -> str:
+def classify_severity(
+    state: ChatState,
+) -> str:
     """Classify the severity of user input using LLM-based classification.
 
     Args:
@@ -120,8 +122,8 @@ def classify_severity(state: ChatState) -> str:
             "chat_history": get_all_user_messages(state.messages),
         }
 
-        if state.image:
-            input_data["image"] = get_image_str(state.image)
+        if state.image_data:
+            input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
 
         classification_response = classification_chain.invoke(input_data)
         return format_severity_response(classification_response)
@@ -130,7 +132,12 @@ def classify_severity(state: ChatState) -> str:
         raise ValueError("Failed to classify severity") from e
 
 
-def mild_severity_node(state: ChatState) -> dict[str, list[Any]]:
+class SeverityNodeResponse(TypedDict):
+    response: list[Any]  # Could be more specific based on actual response type
+    messages: list[tuple[Literal["ai", "human"], str]]
+
+
+def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
     """Process and generate response for mild severity cases.
 
     Args:
@@ -141,10 +148,17 @@ def mild_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
+    input_data = {
+        "user_input": state.messages[-1].content,
+        "chat_history": get_all_user_messages(state.messages),
+    }
+    if state.image_data:
+        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+
     triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
+    triage_response = triage_chain.invoke(input_data)
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -163,10 +177,17 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
+    input_data = {
+        "user_input": state.messages[-1].content,
+        "chat_history": get_all_user_messages(state.messages),
+    }
+    if state.image_data:
+        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+
     triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
+    triage_response = triage_chain.invoke(input_data)
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -185,10 +206,17 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
+    input_data = {
+        "user_input": state.messages[-1].content,
+        "chat_history": get_all_user_messages(state.messages),
+    }
+    if state.image_data:
+        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+
     triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
+    triage_response = triage_chain.invoke(input_data)
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -207,10 +235,17 @@ def other_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
+    input_data = {
+        "user_input": state.messages[-1].content,
+        "chat_history": get_all_user_messages(state.messages),
+    }
+    if state.image_data:
+        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+
     triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
+    triage_response = triage_chain.invoke(input_data)
     triage_response_str = triage_response.model_dump().get("Response")
     return {
         "response": [triage_response],
@@ -279,55 +314,68 @@ def main_graph() -> (
 config, graph, llm, memory = main_graph()
 
 
+def validate_config(config: Optional[RunnableConfig]) -> None:
+    """Validate the configuration for processing user input.
+
+    Args:
+        config: Configuration to validate
+
+    Raises:
+        ValueError: If configuration is invalid
+    """
+    if not config:
+        raise ValueError("Config is required for checkpointing")
+
+    if not isinstance(config.get("configurable"), dict):
+        raise ValueError("Config must contain 'configurable' dictionary")
+
+    required_keys = ["thread_id", "checkpoint_ns", "checkpoint_id"]
+    missing_keys = [
+        key for key in required_keys if key not in config.get("configurable", {})
+    ]
+    if missing_keys:
+        raise ValueError(f"Missing required config keys: {missing_keys}")
+
+
+def prepare_image_data(image: Optional[bytes]) -> Optional[str]:
+    """Prepare image data for processing.
+
+    Args:
+        image: Raw image bytes
+
+    Returns:
+        Base64 encoded image string or None
+    """
+    if not image:
+        return None
+    return base64.b64encode(image).decode("utf-8")
+
+
 def process_user_input(
     user_input: str,
     config: Optional[RunnableConfig] = None,
-    image: Optional[Union[str, Image.Image]] = None,
+    image: Optional[bytes] = None,
 ) -> dict[str, Any]:
     """Process user input through the graph workflow.
-
-    Main entry point for processing user messages through the severity classification
-    and response generation workflow.
 
     Args:
         user_input: User's input message
         config: Configuration settings including checkpoint information
-        image: Optional image path or PIL Image object for multimodal processing
+        image: Optional image bytes for multimodal processing
 
     Returns:
-        Dictionary containing:
-            - messages: List of tuples (message_type, content)
-            - response: List of processed responses
-
-    Raises:
-        RuntimeError: If processing fails at any stage
+        Dictionary containing processed response
     """
     try:
-        if not config:
-            raise ValueError("Config is required for checkpointing")
+        validate_config(config)
 
-        if "configurable" not in config or not isinstance(config["configurable"], dict):
-            raise ValueError("Config must contain 'configurable' dictionary")
-
-        required_keys = ["thread_id", "checkpoint_ns", "checkpoint_id"]
-        missing_keys = [
-            key for key in required_keys if key not in config["configurable"]
-        ]
-        if missing_keys:
-            raise ValueError(f"Missing required config keys: {missing_keys}")
-
-        img_obj = None
-        if image:
-            if isinstance(image, str):
-                img_obj = Image.open(image)
-            elif isinstance(image, Image.Image):
-                img_obj = image
+        image_data = prepare_image_data(image)
 
         result = graph.invoke(
             {
                 "responses": [],
                 "messages": [HumanMessage(content=user_input)],
-                "image": img_obj,
+                "image_data": image_data,
             },
             config=config,
         )
@@ -366,4 +414,8 @@ def process_user_input(
 
     except Exception as e:
         logger.error(f"Error processing input: {str(e)}", exc_info=True)
-        raise RuntimeError(f"Failed to process input: {str(e)}") from e
+        return {
+            "messages": [
+                ("ai", f"An error occurred while processing your request: {str(e)}")
+            ]
+        }
