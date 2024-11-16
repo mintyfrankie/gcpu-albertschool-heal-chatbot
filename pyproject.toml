@@ -28,14 +28,14 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "pytest>=8.3.3",
-    "watchdog>=6.0.0",
-]
+dev-dependencies = ["ipykernel>=6.29.5", "pytest>=8.3.3", "watchdog>=6.0.0"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/backend", "src/telegram_worker", "src/web"]
+
+[tool.rye.scripts]
+telegram-worker = "python src/telegram_worker/app.py"
+web = "streamlit run src/web/app.py"

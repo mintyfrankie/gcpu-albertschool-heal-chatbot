@@ -12,7 +12,7 @@ Typical usage example:
 """
 
 import os
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, Union
 from dataclasses import dataclass
 import logging
 from dotenv import load_dotenv
@@ -25,6 +25,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from PIL import Image
+import base64
+from io import BytesIO
 
 from backend import format_severity_response
 from backend.utils import (
@@ -49,10 +52,17 @@ GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
 
 @dataclass
 class ChatState:
-    """State management for chat interactions."""
+    """State management for chat interactions.
+
+    Attributes:
+        responses: List of previous responses
+        messages: List of chat messages (human and AI)
+        image: Optional image data for multimodal processing
+    """
 
     responses: list[dict[str, Any]]
     messages: Annotated[list[HumanMessage | AIMessage], add_messages]
+    image: Optional[Image.Image] = None
 
 
 def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]:
@@ -71,11 +81,26 @@ def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]
     ]
 
 
+def get_image_str(image: Image.Image) -> str:
+    """Convert PIL Image to base64 string for LLM processing.
+
+    Args:
+        image: PIL Image object to convert
+
+    Returns:
+        Base64 encoded string representation of the image
+    """
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/jpeg;base64,{img_str}"
+
+
 def classify_severity(state: ChatState) -> str:
     """Classify the severity of user input using LLM-based classification.
 
     Args:
-        state: Current chat state containing messages and responses
+        state: Current chat state containing messages, responses and optional image
 
     Returns:
         String indicating severity level ("Mild", "Moderate", "Severe", or "Other")
@@ -89,12 +114,16 @@ def classify_severity(state: ChatState) -> str:
             pydantic_object=SeverityClassificationResponse
         )
         classification_chain = classification_prompt | llm | classification_parser
-        classification_response = classification_chain.invoke(
-            {
-                "user_input": state.messages[-1].content,
-                "chat_history": get_all_user_messages(state.messages),
-            }
-        )
+
+        input_data = {
+            "user_input": state.messages[-1].content,
+            "chat_history": get_all_user_messages(state.messages),
+        }
+
+        if state.image:
+            input_data["image"] = get_image_str(state.image)
+
+        classification_response = classification_chain.invoke(input_data)
         return format_severity_response(classification_response)
     except Exception as e:
         logger.error(f"Classification failed: {str(e)}")
@@ -253,6 +282,7 @@ config, graph, llm, memory = main_graph()
 def process_user_input(
     user_input: str,
     config: Optional[RunnableConfig] = None,
+    image: Optional[Union[str, Image.Image]] = None,
 ) -> dict[str, Any]:
     """Process user input through the graph workflow.
 
@@ -262,6 +292,7 @@ def process_user_input(
     Args:
         user_input: User's input message
         config: Configuration settings including checkpoint information
+        image: Optional image path or PIL Image object for multimodal processing
 
     Returns:
         Dictionary containing:
@@ -285,10 +316,18 @@ def process_user_input(
         if missing_keys:
             raise ValueError(f"Missing required config keys: {missing_keys}")
 
+        img_obj = None
+        if image:
+            if isinstance(image, str):
+                img_obj = Image.open(image)
+            elif isinstance(image, Image.Image):
+                img_obj = image
+
         result = graph.invoke(
             {
                 "responses": [],
                 "messages": [HumanMessage(content=user_input)],
+                "image": img_obj,
             },
             config=config,
         )
