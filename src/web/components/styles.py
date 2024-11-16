@@ -90,13 +90,6 @@ CUSTOM_CSS: Final[str] = """
             margin-bottom: 1.5rem;
         }
 
-        [data-testid="stChatInput"] {
-            position: fixed;
-            bottom: 3rem; 
-            background: white;
-            z-index: 99;
-        }
-
         .disclaimer-container {
             position: fixed;
             bottom: 0;
@@ -107,7 +100,30 @@ CUSTOM_CSS: Final[str] = """
             z-index: 99;
             border-top: 1px solid #f0f0f0;
         }
+
+        [data-testid='stFileUploader'] {
+            width: 10%;
+        }
+
+        [data-testid='stFileUploader'] section {
+            padding: 0;
+            float: left;
+        }
+
+        [data-testid='stFileUploader'] label {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section > input + div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section + div {
+            float: right;
+            padding-top: 0;
+        }
     </style>
+
 """
 
 DISCLAIMER_HTML: Final[str] = """

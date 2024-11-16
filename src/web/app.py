@@ -3,10 +3,6 @@
 This module serves as the main entry point for the Streamlit web application.
 It handles the initialization of the chat interface, session management,
 and user interactions including image uploads and location sharing.
-
-TODO:
-    - Implement image attachments capability
-    - Add location sharing capability
 """
 
 from typing import Final, Any, Tuple
@@ -74,27 +70,39 @@ def setup_interface() -> Tuple[Container, Container]:
     return st.container(), st.container()
 
 
-def handle_file_upload(input_container: Container) -> Tuple[Any, bool]:
-    """Handle file upload and location check.
+def handle_user_interaction(input_container: Container) -> None:
+    """Handle user interaction including file upload and message input.
 
     Args:
         input_container: Streamlit container for input elements
-
-    Returns:
-        Tuple containing the uploaded file and location check status
     """
     with input_container:
-        uploaded_file = st.file_uploader(
-            "Upload Image",
-            type=["png", "jpg", "jpeg"],
-            key="image_uploader",
-            label_visibility="hidden",
-        )
-        location_enabled = st.checkbox("Check my location")
-        if location_enabled:
-            st.session_state.location = get_geolocation()
+        with st.form(key="chat_form", clear_on_submit=True):
+            user_query = st.text_input("Input", key="chat_input")
 
-        return uploaded_file, location_enabled
+            location_enabled = st.checkbox("Check my location")
+            if location_enabled:
+                st.session_state.location = get_geolocation()
+
+            uploaded_file = st.file_uploader(
+                "Upload Image",
+                type=["png", "jpg", "jpeg"],
+                key="file_uploader_key",
+                label_visibility="hidden",
+            )
+            submit_button = st.form_submit_button("Send")
+
+            if submit_button and user_query:
+                image_path = (
+                    process_uploaded_image(uploaded_file) if uploaded_file else None
+                )
+                handle_user_input(
+                    user_query,
+                    st.session_state.chat_container,
+                    initialize_chat_history(),
+                    image_path,
+                    thread_id=st.session_state.session_id,
+                )
 
 
 def main() -> None:
@@ -107,6 +115,7 @@ def main() -> None:
     initialize_session()
 
     chat_container, input_container = setup_interface()
+    st.session_state.chat_container = chat_container  # Store container in session state
     chat_history = initialize_chat_history()
 
     # Render existing chat history
@@ -115,21 +124,8 @@ def main() -> None:
 
     # Handle user input
     with input_container:
-        uploaded_file, _ = handle_file_upload(input_container)
-        user_query = st.chat_input("How can I help you today?")
         st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
-
-        if user_query:
-            image_path = (
-                process_uploaded_image(uploaded_file) if uploaded_file else None
-            )
-            handle_user_input(
-                user_query,
-                chat_container,
-                chat_history,
-                image_path,
-                thread_id=st.session_state.session_id,
-            )
+        handle_user_interaction(input_container)
 
 
 if __name__ == "__main__":

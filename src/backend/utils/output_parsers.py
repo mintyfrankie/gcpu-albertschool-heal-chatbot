@@ -5,7 +5,7 @@ of responses from the language model, including severity classifications and
 different severity-level responses.
 """
 
-from typing import Literal, Optional, List
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
 
