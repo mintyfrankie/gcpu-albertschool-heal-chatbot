@@ -1,9 +1,24 @@
-from typing import List, Literal, Optional
+"""Pydantic models for parsing and validating LLM outputs.
 
+This module defines the data models used to parse and validate various types
+of responses from the language model, including severity classifications and
+different severity-level responses.
+"""
+
+from typing import Literal, Optional, List
 from pydantic import BaseModel, Field, model_validator
 
 
 class TriageResponse(BaseModel):
+    """Model for parsing general triage responses.
+
+    Attributes:
+        Advice: Specific advice based on severity level
+        Severity: Classification of symptom severity
+        Confidence_Level: Confidence score for the classification
+        Follow_up_Questions: List of follow-up questions if needed
+    """
+
     Advice: Optional[str] = Field(
         default=None,
         description="Advice based on severity",
@@ -16,7 +31,7 @@ class TriageResponse(BaseModel):
         default=None,
         description="Confidence score out of 100",
     )
-    Follow_up_Questions: List[str] = Field(
+    Follow_up_Questions: list[str] = Field(
         default_factory=list,
         description="Additional questions if confidence is low",
     )
@@ -42,6 +57,12 @@ class TriageResponse(BaseModel):
 
 
 class SeverityClassificationResponse(BaseModel):
+    """Model for parsing severity classification responses.
+
+    Attributes:
+        Severity: The classified severity level, must be one of the defined literals
+    """
+
     Severity: Literal["Mild", "Moderate", "Severe", "Other"] = Field(
         description="The severity classification of the symptoms, must be one of 'Mild', 'Moderate', 'Severe', or 'Other'.",
     )
@@ -62,13 +83,26 @@ class SeverityClassificationResponse(BaseModel):
 
 
 class MildSeverityResponse(BaseModel):
+    """Model for parsing responses to mild severity cases.
+
+    Attributes:
+        Response: The formatted response text for mild severity
+    """
+
     Response: str = Field(
         description="The response from the llm for mild severity symptoms.",
     )
 
 
 class ModerateSeverityResponse(BaseModel):
-    Recommended_Specialists: List[str] = Field(
+    """Model for parsing responses to moderate severity cases.
+
+    Attributes:
+        Recommended_Specialists: List of recommended medical specialists
+        Response: The formatted response text for moderate severity
+    """
+
+    Recommended_Specialists: list[str] = Field(
         default_factory=list,
         description="Any recommended specialists",
     )
@@ -86,12 +120,24 @@ class ModerateSeverityResponse(BaseModel):
 
 
 class SevereSeverityResponse(BaseModel):
+    """Model for parsing responses to severe severity cases.
+
+    Attributes:
+        Response: The formatted response text for severe severity
+    """
+
     Response: str = Field(
         description="The response from the llm for mild severity symptoms.",
     )
 
 
 class OtherSeverityResponse(BaseModel):
+    """Model for parsing responses to other/unknown severity cases.
+
+    Attributes:
+        Response: The formatted response text for other severity cases
+    """
+
     Response: str = Field(
         description="The response from the llm for mild severity symptoms.",
     )

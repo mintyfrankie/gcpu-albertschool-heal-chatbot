@@ -1,11 +1,14 @@
-"""
-Service layer for the chatbot that handles business logic and implements a LangGraph-based
-triage system with severity classification.
+"""Service layer for the chatbot that handles business logic and implements a LangGraph-based triage system.
 
-The graph workflow:
+This module provides the core functionality for processing user inputs through a severity-based
+triage system using LangGraph. It implements a workflow that:
 1. Takes user input and classifies severity
 2. Routes to appropriate severity handler node
 3. Generates appropriate response based on severity level
+
+Typical usage example:
+    result = process_user_input("I have a headache", thread_id="123")
+    print(result['messages'])
 """
 
 from typing import Annotated, Any, Optional
@@ -49,13 +52,13 @@ class ChatState:
 
 
 def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]:
-    """Extract all user messages from chat history.
+    """Extract and format all user messages from chat history.
 
     Args:
-        messages: List of chat messages
+        messages: List of chat messages containing both human and AI messages
 
     Returns:
-        List of formatted user message strings
+        List of formatted user message strings, each prefixed with "User Input N: "
     """
     return [
         f"User Input {i}: {msg.content}"
@@ -65,16 +68,16 @@ def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]
 
 
 def classify_severity(state: ChatState) -> str:
-    """Classify severity of user input with error handling.
+    """Classify the severity of user input using LLM-based classification.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Classified severity level
+        String indicating severity level ("Mild", "Moderate", "Severe", or "Other")
 
     Raises:
-        ValueError: If classification fails
+        ValueError: If classification fails or returns invalid severity level
     """
     try:
         classification_prompt = ChatPromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
@@ -94,14 +97,16 @@ def classify_severity(state: ChatState) -> str:
         raise ValueError("Failed to classify severity") from e
 
 
-def mild_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle mild severity cases.
+def mild_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for mild severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
     triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
@@ -114,14 +119,16 @@ def mild_severity_node(state: ChatState) -> dict[str, list]:
     }
 
 
-def moderate_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle moderate severity cases.
+def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for moderate severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
     triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
@@ -134,14 +141,16 @@ def moderate_severity_node(state: ChatState) -> dict[str, list]:
     }
 
 
-def severe_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle severe severity cases.
+def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for severe severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
     triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
@@ -154,14 +163,16 @@ def severe_severity_node(state: ChatState) -> dict[str, list]:
     }
 
 
-def other_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle other severity cases.
+def other_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for other/unknown severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
     triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
@@ -175,12 +186,19 @@ def other_severity_node(state: ChatState) -> dict[str, list]:
 
 
 def main_graph() -> (
-    tuple[dict, CompiledStateGraph, ChatGoogleGenerativeAI, MemorySaver]
+    tuple[dict[str, dict], CompiledStateGraph, ChatGoogleGenerativeAI, MemorySaver]
 ):
-    """Initialize and configure the main graph workflow.
+    """Initialize and configure the main LangGraph workflow.
+
+    Creates and configures the graph with all severity nodes and their connections.
+    Initializes the LLM and memory components.
 
     Returns:
-        Tuple containing config, compiled graph, LLM instance, and memory
+        Tuple containing:
+            - Configuration dictionary
+            - Compiled state graph
+            - LLM instance
+            - Memory saver instance
     """
     base_memory = MemorySaver()
     base_memory.storage.clear()
@@ -235,13 +253,19 @@ def process_user_input(
 ) -> dict[str, Any]:
     """Process user input through the graph workflow.
 
+    Main entry point for processing user messages through the severity classification
+    and response generation workflow.
+
     Args:
         user_input: User's input message
-        config: Optional graph configuration
+        config: Optional graph configuration settings
         thread_id: Optional thread ID for conversation tracking
 
     Returns:
-        Dictionary containing the response
+        Dictionary containing processed response and messages
+
+    Raises:
+        RuntimeError: If processing fails at any stage
     """
     try:
         # Create config with thread_id if provided
