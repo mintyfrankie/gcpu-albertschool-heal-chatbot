@@ -1,4 +1,10 @@
-"""Chat interface component for the Streamlit application."""
+"""Chat interface component for the Streamlit application.
+
+This module provides components for rendering chat messages and handling
+user input in the Streamlit interface. It includes support for displaying
+messages with optional images and processing user queries through the
+backend service.
+"""
 
 from typing import Any, Optional
 import logging
@@ -8,9 +14,7 @@ import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
 from backend.services import process_user_input
-from web.utils.image import process_uploaded_image
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +24,8 @@ def render_message(
     """Render a single chat message with optional image.
 
     Args:
-        message: The message to render
-        image_path: Optional path to an uploaded image
+        message: The message to render (either AI or Human message)
+        image_path: Optional path to an uploaded image to display
     """
     avatar = "🧑‍⚕️" if isinstance(message, AIMessage) else "👤"
     role = "AI" if isinstance(message, AIMessage) else "Human"
@@ -41,14 +45,46 @@ def render_message(
 
 
 def render_chat_history(messages: list[AIMessage | HumanMessage]) -> None:
-    """Render the chat history.
+    """Render the complete chat history.
 
     Args:
-        messages: List of messages to render
+        messages: List of messages to render in the chat interface
+
+    Note:
+        Future implementation should support retrieving associated images
+        from message metadata.
     """
     for message in messages:
-        # TODO: Add support for retrieving associated images from message metadata
         render_message(message)
+
+
+def extract_ai_message(response: Any) -> Optional[AIMessage]:
+    """Extract AI message from various response formats.
+
+    Args:
+        response: Response object from the backend service
+
+    Returns:
+        Extracted AIMessage or None if extraction fails
+
+    Note:
+        Handles multiple response formats including direct AIMessage,
+        tuples, strings, and objects with content attributes.
+    """
+    if isinstance(response, AIMessage):
+        return response
+    elif isinstance(response, tuple):
+        if len(response) >= 2:
+            content = response[1]
+            if isinstance(content, str):
+                return AIMessage(content=content)
+            elif hasattr(content, "content"):
+                return AIMessage(content=content.content)
+    elif isinstance(response, str):
+        return AIMessage(content=response)
+    elif hasattr(response, "content") and not isinstance(response, tuple):
+        return AIMessage(content=response.content)
+    return None
 
 
 def handle_user_input(
@@ -58,7 +94,7 @@ def handle_user_input(
     uploaded_image: Optional[Path] = None,
     thread_id: Optional[str] = None,
 ) -> None:
-    """Handle user input and generate AI response using the graph workflow.
+    """Handle user input and generate AI response.
 
     Args:
         user_query: The user's input query
@@ -66,6 +102,10 @@ def handle_user_input(
         chat_history: List of chat messages
         uploaded_image: Optional path to an uploaded image
         thread_id: Optional thread ID for conversation tracking
+
+    Note:
+        Handles the complete flow from user input to AI response,
+        including error handling and message rendering.
     """
     chat_history.append(HumanMessage(content=user_query))
 
@@ -74,34 +114,18 @@ def handle_user_input(
 
         try:
             with st.spinner("Analyzing and processing your query..."):
-                # Process through the graph workflow with thread_id
                 response = process_user_input(user_query, thread_id=thread_id)
 
-                # Extract response from the graph output
                 if response and isinstance(response, dict) and "messages" in response:
                     messages = response["messages"]
                     if messages:
-                        last_message = messages[-1]
-
-                        # Handle different response formats
-                        if isinstance(last_message, AIMessage):
-                            ai_message = last_message
-                        elif isinstance(last_message, tuple) and len(last_message) == 2:
-                            _, content = last_message
-                            ai_message = AIMessage(content=content)
-                        elif isinstance(last_message, str):
-                            ai_message = AIMessage(content=last_message)
+                        ai_message = extract_ai_message(messages[-1])
+                        if ai_message:
+                            render_message(ai_message)
+                            chat_history.append(ai_message)
                         else:
-                            logger.warning(
-                                f"Unexpected message format, attempting to extract content: {last_message}"
-                            )
-                            content = getattr(
-                                last_message, "content", str(last_message)
-                            )
-                            ai_message = AIMessage(content=content)
-
-                        render_message(ai_message)
-                        chat_history.append(ai_message)
+                            logger.error("Failed to extract AI message from response")
+                            st.error("Unable to process the response")
                     else:
                         logger.error("Empty messages list in response")
                         st.error("No response generated from the system")
@@ -110,5 +134,5 @@ def handle_user_input(
                     st.error("Unexpected response format from the system")
 
         except Exception as e:
-            st.error(f"Error processing your request: {str(e)}")
             logger.exception("Error in chat processing")
+            st.error(f"Error processing your request: {str(e)}")
