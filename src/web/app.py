@@ -7,6 +7,7 @@ TODO: add location sharing capability
 
 from typing import Final
 import logging
+import uuid
 
 import streamlit as st
 from streamlit_js_eval import get_geolocation
@@ -34,6 +35,10 @@ PAGE_CONFIG: Final[dict] = {
 def main() -> None:
     """Initialize and run the Streamlit application."""
     load_dotenv()
+
+    # Initialize session ID if not exists
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())
 
     # Initialize the graph workflow
     if "graph_initialized" not in st.session_state:
@@ -76,7 +81,13 @@ def main() -> None:
             image_path = (
                 process_uploaded_image(uploaded_file) if uploaded_file else None
             )
-            handle_user_input(user_query, chat_container, chat_history, image_path)
+            handle_user_input(
+                user_query,
+                chat_container,
+                chat_history,
+                image_path,
+                thread_id=st.session_state.session_id,
+            )
 
 
 if __name__ == "__main__":

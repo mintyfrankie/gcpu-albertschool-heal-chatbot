@@ -13,7 +13,7 @@ class MessageHandler:
 
     def __init__(self) -> None:
         """Initialize the message handler."""
-        self.config: RunnableConfig = {"configurable": {"thread_id": "3"}}
+        self.config: RunnableConfig = {"configurable": {}}
 
     def handle_start(self, message: Message) -> str:
         """
@@ -83,7 +83,9 @@ class MessageHandler:
             return "I can only process text messages. Please send me a text message."
 
         try:
-            result = process_user_input(user_input=message.text, config=self.config)
+            result = process_user_input(
+                user_input=message.text, thread_id=str(message.chat.id)
+            )
 
             if isinstance(result, dict) and "messages" in result:
                 messages = result["messages"]
