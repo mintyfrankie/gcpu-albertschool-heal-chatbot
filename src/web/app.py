@@ -1,11 +1,15 @@
-"""
-Streamlit app prototype for frontend display with custom styling.
+"""Streamlit web application for the medical assistant interface.
 
-TODO: add image attachments capability
-TODO: add location sharing capability
+This module serves as the main entry point for the Streamlit web application.
+It handles the initialization of the chat interface, session management,
+and user interactions including image uploads and location sharing.
+
+TODO:
+    - Implement image attachments capability
+    - Add location sharing capability
 """
 
-from typing import Final
+from typing import Final, Any, Tuple
 import logging
 import uuid
 
@@ -23,7 +27,7 @@ from web.utils.image import process_uploaded_image
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Constants
+# Application configuration constants
 PAGE_CONFIG: Final[dict] = {
     "page_title": "Heal",
     "page_icon": "🧑‍⚕️",
@@ -31,40 +35,54 @@ PAGE_CONFIG: Final[dict] = {
     "initial_sidebar_state": "collapsed",
 }
 
+# Type alias for Streamlit container
+Container = Any
 
-def main() -> None:
-    """Initialize and run the Streamlit application."""
-    load_dotenv()
 
-    # Initialize session ID if not exists
+def initialize_session() -> None:
+    """Initialize session state variables.
+
+    Sets up session ID and initializes the graph workflow if not already present
+    in the session state.
+    """
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
 
-    # Initialize the graph workflow
     if "graph_initialized" not in st.session_state:
         config, graph, llm, memory = main_graph()
-        st.session_state.config = config
-        st.session_state.graph = graph
-        st.session_state.llm = llm
-        st.session_state.memory = memory
-        st.session_state.graph_initialized = True
+        st.session_state.update(
+            {
+                "config": config,
+                "graph": graph,
+                "llm": llm,
+                "memory": memory,
+                "graph_initialized": True,
+            }
+        )
 
-    # Configure page
+
+def setup_interface() -> Tuple[Container, Container]:
+    """Set up the main interface containers.
+
+    Returns:
+        A tuple containing the chat and input containers
+    """
     st.set_page_config(**PAGE_CONFIG)
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
-    # Render header
     render_header()
 
-    # Initialize state and containers
-    chat_history = initialize_chat_history()
-    chat_container = st.container()
-    input_container = st.container()
+    return st.container(), st.container()
 
-    # Render chat interface
-    with chat_container:
-        render_chat_history(chat_history)
 
+def handle_file_upload(input_container: Container) -> Tuple[Any, bool]:
+    """Handle file upload and location check.
+
+    Args:
+        input_container: Streamlit container for input elements
+
+    Returns:
+        Tuple containing the uploaded file and location check status
+    """
     with input_container:
         uploaded_file = st.file_uploader(
             "Upload Image",
@@ -72,8 +90,32 @@ def main() -> None:
             key="image_uploader",
             label_visibility="hidden",
         )
-        if st.checkbox("Check my location"):
+        location_enabled = st.checkbox("Check my location")
+        if location_enabled:
             st.session_state.location = get_geolocation()
+
+        return uploaded_file, location_enabled
+
+
+def main() -> None:
+    """Initialize and run the Streamlit application.
+
+    This function sets up the application state, initializes the interface,
+    and handles the main application loop including user input processing.
+    """
+    load_dotenv()
+    initialize_session()
+
+    chat_container, input_container = setup_interface()
+    chat_history = initialize_chat_history()
+
+    # Render existing chat history
+    with chat_container:
+        render_chat_history(chat_history)
+
+    # Handle user input
+    with input_container:
+        uploaded_file, _ = handle_file_upload(input_container)
         user_query = st.chat_input("How can I help you today?")
         st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
 
