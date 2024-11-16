@@ -16,6 +16,7 @@ from web.components.header import render_header
 from web.components.styles import CUSTOM_CSS, DISCLAIMER_HTML
 from web.utils.state import initialize_chat_history
 from backend.services import main_graph
+from web.utils.image import process_uploaded_image
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -59,11 +60,20 @@ def main() -> None:
         render_chat_history(chat_history)
 
     with input_container:
+        uploaded_file = st.file_uploader(
+            "Upload Image",
+            type=["png", "jpg", "jpeg"],
+            key="image_uploader",
+            label_visibility="hidden",
+        )
         user_query = st.chat_input("How can I help you today?")
         st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
 
         if user_query:
-            handle_user_input(user_query, chat_container, chat_history)
+            image_path = (
+                process_uploaded_image(uploaded_file) if uploaded_file else None
+            )
+            handle_user_input(user_query, chat_container, chat_history, image_path)
 
 
 if __name__ == "__main__":

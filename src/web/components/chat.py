@@ -1,27 +1,35 @@
 """Chat interface component for the Streamlit application."""
 
-from typing import Any
-
+from typing import Any, Optional
 import logging
+from pathlib import Path
+
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
 from backend.services import process_user_input
+from web.utils.image import process_uploaded_image
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 
-def render_message(message: AIMessage | HumanMessage) -> None:
-    """Render a single chat message.
+def render_message(
+    message: AIMessage | HumanMessage, image_path: Optional[Path] = None
+) -> None:
+    """Render a single chat message with optional image.
 
     Args:
         message: The message to render
+        image_path: Optional path to an uploaded image
     """
     avatar = "🧑‍⚕️" if isinstance(message, AIMessage) else "👤"
     role = "AI" if isinstance(message, AIMessage) else "Human"
 
     with st.chat_message(role, avatar=avatar):
+        if image_path:
+            st.image(str(image_path), caption="Uploaded Image")
+
         st.markdown(
             f"""
             <div class='chat-message {role.lower()}-message'>
@@ -39,6 +47,7 @@ def render_chat_history(messages: list[AIMessage | HumanMessage]) -> None:
         messages: List of messages to render
     """
     for message in messages:
+        # TODO: Add support for retrieving associated images from message metadata
         render_message(message)
 
 
@@ -46,6 +55,7 @@ def handle_user_input(
     user_query: str,
     chat_container: Any,
     chat_history: list[AIMessage | HumanMessage],
+    uploaded_image: Optional[Path] = None,
 ) -> None:
     """Handle user input and generate AI response using the graph workflow.
 
@@ -53,11 +63,12 @@ def handle_user_input(
         user_query: The user's input query
         chat_container: Streamlit container for chat messages
         chat_history: List of chat messages
+        uploaded_image: Optional path to an uploaded image
     """
     chat_history.append(HumanMessage(content=user_query))
 
     with chat_container:
-        render_message(HumanMessage(content=user_query))
+        render_message(HumanMessage(content=user_query), uploaded_image)
 
         try:
             with st.spinner("Analyzing and processing your query..."):
@@ -82,7 +93,6 @@ def handle_user_input(
                             logger.warning(
                                 f"Unexpected message format, attempting to extract content: {last_message}"
                             )
-                            # Try to extract content from unknown format
                             content = getattr(
                                 last_message, "content", str(last_message)
                             )
