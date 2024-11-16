@@ -12,6 +12,7 @@ from pathlib import Path
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from backend.services import process_user_input
 
@@ -102,10 +103,6 @@ def handle_user_input(
         chat_history: List of chat messages
         uploaded_image: Optional path to an uploaded image
         thread_id: Optional thread ID for conversation tracking
-
-    Note:
-        Handles the complete flow from user input to AI response,
-        including error handling and message rendering.
     """
     chat_history.append(HumanMessage(content=user_query))
 
@@ -114,7 +111,16 @@ def handle_user_input(
 
         try:
             with st.spinner("Analyzing and processing your query..."):
-                response = process_user_input(user_query, thread_id=thread_id)
+                # Create the config dictionary as expected by the backend
+                config: RunnableConfig = {
+                    "configurable": {
+                        "thread_id": thread_id or "default",
+                        "checkpoint_ns": "chat",
+                        "checkpoint_id": thread_id or "default",
+                    }
+                }
+
+                response = process_user_input(user_query, config=config)
 
                 if response and isinstance(response, dict) and "messages" in response:
                     messages = response["messages"]
