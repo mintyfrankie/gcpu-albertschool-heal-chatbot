@@ -8,7 +8,7 @@ The graph workflow:
 3. Generates appropriate response based on severity level
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 from dataclasses import dataclass
 import logging
 from dotenv import load_dotenv
@@ -215,7 +215,7 @@ def main_graph() -> (
 
     compiled_graph = graph.compile(base_memory)
     config_dict = {
-        "configurable": {"thread_id": "3"},
+        "configurable": {},
     }
     return (
         config_dict,
@@ -230,18 +230,26 @@ config, graph, llm, memory = main_graph()
 
 def process_user_input(
     user_input: str,
-    config: RunnableConfig = {"configurable": {"thread_id": "3"}},
+    config: Optional[RunnableConfig] = None,
+    thread_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Process user input through the graph workflow.
 
     Args:
-        user_input: User's message
-        config: Graph configuration
+        user_input: User's input message
+        config: Optional graph configuration
+        thread_id: Optional thread ID for conversation tracking
 
     Returns:
         Dictionary containing the response
     """
     try:
+        # Create config with thread_id if provided
+        if thread_id and not config:
+            config = {"configurable": {"thread_id": thread_id}}
+        elif not config:
+            config = {"configurable": {}}
+
         result = graph.invoke(
             {
                 "responses": [],

@@ -56,6 +56,7 @@ def handle_user_input(
     chat_container: Any,
     chat_history: list[AIMessage | HumanMessage],
     uploaded_image: Optional[Path] = None,
+    thread_id: Optional[str] = None,
 ) -> None:
     """Handle user input and generate AI response using the graph workflow.
 
@@ -64,6 +65,7 @@ def handle_user_input(
         chat_container: Streamlit container for chat messages
         chat_history: List of chat messages
         uploaded_image: Optional path to an uploaded image
+        thread_id: Optional thread ID for conversation tracking
     """
     chat_history.append(HumanMessage(content=user_query))
 
@@ -72,8 +74,8 @@ def handle_user_input(
 
         try:
             with st.spinner("Analyzing and processing your query..."):
-                # Process through the graph workflow
-                response = process_user_input(user_query)
+                # Process through the graph workflow with thread_id
+                response = process_user_input(user_query, thread_id=thread_id)
 
                 # Extract response from the graph output
                 if response and isinstance(response, dict) and "messages" in response:
