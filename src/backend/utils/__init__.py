@@ -1,3 +1,8 @@
+from backend.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
+logger.info("Initializing backend utilities")
+
 from backend.utils.get_doctors import get_doctors
 from backend.utils.get_facilities import find_nearby_facilities
 from backend.utils.output_parsers import (
@@ -15,6 +20,8 @@ from backend.utils.prompt_templates import (
     OTHER_SEVERITY_PROMPT_TEMPLATE,
     SEVERE_SEVERITY_PROMPT_TEMPLATE,
 )
+
+logger.debug("Loaded all utility modules and components")
 
 __all__ = [
     "get_doctors",

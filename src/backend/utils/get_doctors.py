@@ -1,24 +1,29 @@
 from urllib.parse import urlencode
 import requests
+from typing import List, Dict, Any
+
+from backend.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def get_doctors(
-    specializations: list[str],
+    specializations: List[str],
     latitude: float,
     longitude: float,
     is_urgent: bool = False,
-) -> list:
+) -> List[Dict[str, Any]]:
     """
     Fetches doctors from Doctolib API with the given specializations.
 
     Args:
-        specializations (list[str]): The specializations of the doctors to fetch.
-        latitude (float): The latitude of the location to search for doctors.
-        longitude (float): The longitude of the location to search for doctors.
-        is_urgent (bool, optional): Whether to search for urgent doctors or not. Defaults to False.
+        specializations: The specializations of the doctors to fetch.
+        latitude: The latitude of the location to search for doctors.
+        longitude: The longitude of the location to search for doctors.
+        is_urgent: Whether to search for urgent doctors or not. Defaults to False.
 
     Returns:
-        list: A list of doctor objects as returned by the Doctolib API.
+        A list of doctor objects as returned by the Doctolib API.
 
     Raises:
         requests.exceptions.RequestException: If the request to the Doctolib API fails.
@@ -27,6 +32,8 @@ def get_doctors(
     doctor_list = []
 
     specializations = specializations[:3]
+    logger.info(f"Searching for doctors with specializations: {specializations}")
+    logger.info(f"Location: lat={latitude}, lon={longitude}, urgent={is_urgent}")
 
     for specialization in specializations:
         api_url = f"https://www.doctolib.fr/{specialization}/"
@@ -45,9 +52,21 @@ def get_doctors(
             "referer": f"{api_url}?{urlencode(query_params)}",
         }
 
-        response = requests.get(api_url, headers=headers, params=query_params)
-        response.raise_for_status()
+        logger.debug(f"Making request to {api_url} with params: {query_params}")
 
-        doctor_list.extend(response.json().get("data", {}).get("doctors", [])[:5])
+        try:
+            response = requests.get(api_url, headers=headers, params=query_params)
+            response.raise_for_status()
 
+            doctors = response.json().get("data", {}).get("doctors", [])[:5]
+            logger.info(
+                f"Found {len(doctors)} doctors for specialization {specialization}"
+            )
+            doctor_list.extend(doctors)
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching doctors for {specialization}: {str(e)}")
+            raise
+
+    logger.info(f"Total doctors found: {len(doctor_list)}")
     return doctor_list

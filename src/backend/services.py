@@ -46,8 +46,9 @@ from backend.utils import (
     find_nearby_facilities,
     get_doctors,
 )
+from backend.utils.logging import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 load_dotenv()
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
@@ -442,17 +443,13 @@ def process_user_input(
     config: Optional[RunnableConfig] = None,
     image: Optional[bytes] = None,
 ) -> dict[str, Any]:
-    """Process user input through the graph workflow.
-
-    Args:
-        user_input: User's input message
-        config: Configuration settings including checkpoint information
-        image: Optional image bytes for multimodal processing
-
-    Returns:
-        Dictionary containing processed response
-    """
+    """Process user input through the graph workflow."""
     try:
+        logger.info("Processing new user input")
+        logger.debug(f"User input: {user_input}")
+        if image:
+            logger.debug("Image data received with input")
+
         validate_config(config)
 
         image_data = prepare_image_data(image)
@@ -499,7 +496,7 @@ def process_user_input(
         }
 
     except Exception as e:
-        logger.error(f"Error processing input: {str(e)}", exc_info=True)
+        logger.error("Failed to process user input", exc_info=True)
         return {
             "messages": [
                 ("ai", f"An error occurred while processing your request: {str(e)}")
