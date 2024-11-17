@@ -39,6 +39,9 @@ charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via streamlit
+colorama==0.4.6
+    # via click
+    # via tqdm
 frozenlist==1.5.0
     # via aiohttp
     # via aiosignal
@@ -71,6 +74,8 @@ google-generativeai==0.8.3
 googleapis-common-protos==1.65.0
     # via google-api-core
     # via grpcio-status
+greenlet==3.1.1
+    # via sqlalchemy
 grpcio==1.67.1
     # via google-api-core
     # via grpcio-status
@@ -265,5 +270,7 @@ uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.2.3
     # via requests
+watchdog==5.0.3
+    # via streamlit
 yarl==1.17.1
     # via aiohttp

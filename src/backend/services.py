@@ -11,23 +11,25 @@ Typical usage example:
     print(result['messages'])
 """
 
-import os
-from typing import Annotated, Any, Optional, Literal, TypedDict
-from dataclasses import dataclass
+import base64
 import logging
+import os
+from dataclasses import dataclass
+from io import BytesIO
+from typing import Annotated, Any, Literal, Optional, TypedDict
+
+import streamlit as st
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
-from langgraph.graph.state import CompiledStateGraph
-from langchain.schema import HumanMessage, AIMessage
+from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.graph.state import CompiledStateGraph
 from PIL import Image
-import base64
-from io import BytesIO
 
 from backend import format_severity_response
 from backend.utils import (
@@ -41,10 +43,12 @@ from backend.utils import (
     OtherSeverityResponse,
     SevereSeverityResponse,
     SeverityClassificationResponse,
+    find_nearby_facilities,
+    get_doctors,
 )
 
 logger = logging.getLogger(__name__)
-load_dotenv()
+load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
@@ -97,12 +101,12 @@ def get_image_str(image: Image.Image) -> str:
 
 
 def classify_severity(
-    state: ChatState,
+    chat_state: ChatState,
 ) -> str:
     """Classify the severity of user input using LLM-based classification.
 
     Args:
-        state: Current chat state containing messages, responses and optional image
+        chat_state: Current chat state containing messages, responses and optional image
 
     Returns:
         String indicating severity level ("Mild", "Moderate", "Severe", or "Other")
@@ -118,18 +122,17 @@ def classify_severity(
         classification_chain = classification_prompt | llm | classification_parser
 
         input_data = {
-            "user_input": state.messages[-1].content,
-            "chat_history": get_all_user_messages(state.messages),
+            "user_input": chat_state.messages[-1].content,
+            "chat_history": get_all_user_messages(chat_state.messages),
             "image": "",
         }
 
-        if state.image_data:
-            input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+        if chat_state.image_data:
+            input_data["image"] = f"data:image/jpeg;base64,{chat_state.image_data}"
 
         classification_response = classification_chain.invoke(input_data)
         return format_severity_response(classification_response)
     except Exception as e:
-        logger.error(f"Classification failed: {str(e)}", exc_info=True)
         raise ValueError("Failed to classify severity") from e
 
 
@@ -138,11 +141,29 @@ class SeverityNodeResponse(TypedDict):
     messages: list[tuple[Literal["ai", "human"], str]]
 
 
+def prepare_input_data(state: ChatState) -> dict[str, str]:
+    """Prepare input data for prompt templates.
+
+    Args:
+        state (ChatState): Current chat state
+
+    Returns:
+        dict[str, str]: Prepared input data with user input, chat history, and image
+    """
+    user_input = state.messages[-1].content
+    chat_history = get_all_user_messages(state.messages)
+    image = ""
+    if state.image_data:
+        image = f"data:image/jpeg;base64,{state.image_data}"
+
+    return {"user_input": user_input, "chat_history": chat_history, "image": image}
+
+
 def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
     """Process and generate response for mild severity cases.
 
     Args:
-        state: Current chat state containing messages and responses
+        state (ChatState): Current chat state containing messages and responses
 
     Returns:
         Dictionary containing:
@@ -150,36 +171,17 @@ def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
             - messages: List of tuples containing message type and content
     """
     input_data = prepare_input_data(state)
-    triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke(input_data)
-    triage_response_str = triage_response.model_dump().get("Response")
+
+    prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
+    parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
+
+    response = (prompt | llm | parser).invoke(input_data)
+    response_str = response.model_dump().get("Response")
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_str)],
     }
-
-
-def prepare_input_data(state: ChatState) -> dict[str, Any]:
-    """Prepare input data for prompt templates.
-
-    Args:
-        state: Current chat state containing messages and responses
-
-    Returns:
-        Dictionary containing prepared input data with all required fields
-    """
-    input_data = {
-        "user_input": state.messages[-1].content,
-        "chat_history": get_all_user_messages(state.messages),
-        "image": "",
-    }
-
-    if state.image_data:
-        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
-
-    return input_data
 
 
 def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
@@ -195,14 +197,53 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
     """
     input_data = prepare_input_data(state)
 
-    triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke(input_data)
-    triage_response_str = triage_response.model_dump().get("Response")
+    moderate_severity_prompt = ChatPromptTemplate.from_template(
+        MODERATE_SEVERITY_PROMPT_TEMPLATE
+    )
+    moderate_severity_response_parser = PydanticOutputParser(
+        pydantic_object=ModerateSeverityResponse
+    )
+    response = (
+        moderate_severity_prompt | llm | moderate_severity_response_parser
+    ).invoke(input_data)
+    response_text = response.model_dump().get("Response")
+
+    if st.session_state.location:
+        location = st.session_state.location
+        latitude = location["coords"]["latitude"]
+        longitude = location["coords"]["longitude"]
+
+        specializations = response.model_dump().get("Recommended_Specialists")
+        doctors = get_doctors(specializations, latitude, longitude)
+        doctors_info = "\n\n---\n".join(
+            f"Name: {doctor['name_with_title']}\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
+            f"Book an appointment: {doctor['link']}"
+            for doctor in doctors
+        )
+
+        pharmacies = find_nearby_facilities(latitude, longitude)
+        pharmacies_info = "\n\n---\n".join(
+            f"Name: {pharmacy['displayName']['text']}\n"
+            f"Directions: [](https://www.google.com/maps/search/?api=1&query={pharmacy['latitude']},{pharmacy['longitude']})\n"
+            for pharmacy in pharmacies
+        )
+
+        if pharmacies_info and doctors_info:
+            response_text += (
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
+                f"Recommended Pharmacies:\n---\n{pharmacies_info}---\n"
+            )
+
+        elif pharmacies_info:
+            response_text += f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
+
+        elif doctors_info:
+            response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_text)],
     }
 
 
@@ -219,14 +260,50 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
     """
     input_data = prepare_input_data(state)
 
-    triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke(input_data)
-    triage_response_str = triage_response.model_dump().get("Response")
+    response = (
+        ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
+        | llm
+        | PydanticOutputParser(pydantic_object=SevereSeverityResponse)
+    ).invoke(input_data)
+
+    response_text = response.model_dump().get("Response")
+
+    if st.session_state.location:
+        location = st.session_state.location
+        latitude = location["coords"]["latitude"]
+        longitude = location["coords"]["longitude"]
+
+        specializations = ["medecin-generaliste"]
+        doctors = get_doctors(specializations, latitude, longitude, is_urgent=True)
+        doctors_info = "\n\n---\n".join(
+            f"Name: {doctor['name_with_title']}\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
+            f"Book an appointment: {doctor['link']}"
+            for doctor in doctors
+        )
+
+        hospitals = find_nearby_facilities(latitude, longitude, "hospital")
+        hospitals_info = "\n\n---\n".join(
+            f"Name: {hospital['displayName']['text']}\n"
+            f"Directions: [](https://www.google.com/maps/search/?api=1&query={hospital['latitude']},{hospital['longitude']})\n"
+            for hospital in hospitals
+        )
+
+        if hospitals_info and doctors_info:
+            response_text += (
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
+                f"Recommended Pharmacies:\n---\n{hospitals_info}---\n"
+            )
+
+        elif hospitals_info:
+            response_text += f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"
+
+        elif doctors_info:
+            response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_text)],
     }
 
 
@@ -242,15 +319,17 @@ def other_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - messages: List of tuples containing message type and content
     """
     input_data = prepare_input_data(state)
+    response = (
+        ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
+        | llm
+        | PydanticOutputParser(pydantic_object=OtherSeverityResponse)
+    ).invoke(input_data)
 
-    triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke(input_data)
-    triage_response_str = triage_response.model_dump().get("Response")
+    response_text = response.model_dump().get("Response")
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_text)],
     }
 
 

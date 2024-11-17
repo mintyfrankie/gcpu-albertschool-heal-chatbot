@@ -5,20 +5,20 @@ It handles the initialization of the chat interface, session management,
 and user interactions including image uploads and location sharing.
 """
 
-from typing import Final, Any, Tuple
 import logging
 import uuid
+from typing import Any, Final, Tuple
 
 import streamlit as st
-from streamlit_js_eval import get_geolocation
 from dotenv import load_dotenv
+from streamlit_js_eval import get_geolocation
 
+from backend.services import main_graph
 from web.components.chat import handle_user_input, render_chat_history
 from web.components.header import render_header
 from web.components.styles import CUSTOM_CSS, DISCLAIMER_HTML
-from web.utils.state import initialize_chat_history
-from backend.services import main_graph
 from web.utils.image import process_uploaded_image
+from web.utils.state import initialize_chat_history
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -80,10 +80,6 @@ def handle_user_interaction(input_container: Container) -> None:
         with st.form(key="chat_form", clear_on_submit=True):
             user_query = st.text_input(" ", key="chat_input")
 
-            location_enabled = st.checkbox("Check my location")
-            if location_enabled:
-                st.session_state.location = get_geolocation()
-
             uploaded_file = st.file_uploader(
                 "Upload Image",
                 type=["png", "jpg", "jpeg"],
@@ -117,6 +113,8 @@ def main() -> None:
     chat_container, input_container = setup_interface()
     st.session_state.chat_container = chat_container
     chat_history = initialize_chat_history()
+
+    st.session_state.location = get_geolocation()
 
     with chat_container:
         render_chat_history(chat_history)

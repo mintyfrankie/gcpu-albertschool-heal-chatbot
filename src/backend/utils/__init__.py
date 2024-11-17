@@ -1,3 +1,5 @@
+from backend.utils.get_doctors import get_doctors
+from backend.utils.get_facilities import find_nearby_facilities
 from backend.utils.output_parsers import (
     MildSeverityResponse,
     ModerateSeverityResponse,
@@ -15,6 +17,8 @@ from backend.utils.prompt_templates import (
 )
 
 __all__ = [
+    "get_doctors",
+    "find_nearby_facilities",
     "MildSeverityResponse",
     "ModerateSeverityResponse",
     "OtherSeverityResponse",
