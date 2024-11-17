@@ -7,6 +7,9 @@ different severity-level responses.
 
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
+from backend.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class TriageResponse(BaseModel):
@@ -72,10 +75,14 @@ class SeverityClassificationResponse(BaseModel):
     def check_valid_severity(cls, values: dict) -> dict:
         severity = values.get("Severity")
         allowed_values = ["Mild", "Moderate", "Severe", "Other"]
+        logger.debug(f"Validating severity value: {severity}")
+
         if severity not in allowed_values:
             if severity == "Unknown":
+                logger.info("Converting 'Unknown' severity to 'Other'")
                 values["Severity"] = "Other"
             else:
+                logger.error(f"Invalid severity value received: {severity}")
                 raise ValueError(
                     f"Invalid severity value: {severity}. Must be one of {allowed_values}."
                 )

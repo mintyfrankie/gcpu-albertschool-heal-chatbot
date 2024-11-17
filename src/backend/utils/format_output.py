@@ -5,6 +5,9 @@ into consistent, user-friendly formats.
 """
 
 from backend.utils import SeverityClassificationResponse
+from backend.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def format_severity_response(response: SeverityClassificationResponse) -> str:
@@ -20,8 +23,11 @@ def format_severity_response(response: SeverityClassificationResponse) -> str:
         Exception: If response formatting fails
     """
     try:
+        logger.debug(f"Formatting severity response: {response}")
         response_dict = response.model_dump()
         formatted_output = f"{response_dict.get('Severity', 'N/A')}"
+        logger.debug(f"Formatted output: {formatted_output}")
         return formatted_output
     except Exception as e:
+        logger.error(f"Error formatting severity response: {str(e)}", exc_info=True)
         return f"Error formatting response: {e}"
