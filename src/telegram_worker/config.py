@@ -13,6 +13,7 @@ import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+import tempfile
 
 load_dotenv()
 
@@ -36,6 +37,8 @@ class Settings(BaseSettings):
         MODEL_NAME (str): Name of the Gemini model to use for generation
         TEMPERATURE (float): Temperature parameter for controlling response randomness
         MAX_TOKENS (int): Maximum number of tokens for generated responses
+        TEMP_IMAGE_DIR (str): Directory for temporary image storage
+        IMAGE_RETENTION_PERIOD (int): How long to keep temporary images (in seconds)
     """
 
     TELEGRAM_TOKEN: str
@@ -43,6 +46,8 @@ class Settings(BaseSettings):
     MODEL_NAME: str = "gemini-pro"
     TEMPERATURE: float = 0.7
     MAX_TOKENS: int = 500
+    TEMP_IMAGE_DIR: str = os.path.join(tempfile.gettempdir(), "telegram_bot_images")
+    IMAGE_RETENTION_PERIOD: int = 3600  # 1 hour
 
     class Config:
         """Pydantic configuration class.

@@ -65,6 +65,16 @@ class TelegramBot:
             """
             self.message_handler.handle_start(message)
 
+        @self.bot.message_handler(content_types=["photo"])
+        def handle_photo(message: Message) -> None:
+            """Handle incoming photo messages from users.
+
+            Args:
+                message (Message): Telegram message object containing the photo
+                                 and metadata about the sender
+            """
+            self.message_handler.handle_photo(message)
+
         @self.bot.message_handler(content_types=["text"])
         def handle_text(message: Message) -> None:
             """Handle incoming text messages from users.

@@ -8,7 +8,6 @@ from backend.utils.prompt_templates import (
 )
 
 __all__ = [
-    "format_response",
     "format_severity_response",
     "MAIN_PROMPT_TEMPLATE",
     "MILD_SEVERITY_PROMPT_TEMPLATE",
