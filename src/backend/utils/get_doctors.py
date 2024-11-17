@@ -4,7 +4,10 @@ import requests
 
 
 def get_doctors(
-    specializations: list[str], latitude: float, longitude: float, is_urgent: bool = False
+    specializations: list[str],
+    latitude: float,
+    longitude: float,
+    is_urgent: bool = False,
 ) -> list:
     """
     Fetches doctors from Doctolib API with the given specializations.

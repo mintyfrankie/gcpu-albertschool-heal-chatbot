@@ -1,9 +1,6 @@
-import http.client
-import json
 import os
 
 import requests
-import streamlit as st
 
 
 def find_nearby_facilities(
@@ -43,7 +40,9 @@ def find_nearby_facilities(
         "X-Goog-FieldMask": "places.displayName,places.location",
     }
 
-    response = requests.post(api_url, json=query_payload, headers=http_headers, timeout=30)
+    response = requests.post(
+        api_url, json=query_payload, headers=http_headers, timeout=30
+    )
 
     response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
 
