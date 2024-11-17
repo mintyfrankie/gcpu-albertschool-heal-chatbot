@@ -120,6 +120,7 @@ def classify_severity(
         input_data = {
             "user_input": state.messages[-1].content,
             "chat_history": get_all_user_messages(state.messages),
+            "image": "",
         }
 
         if state.image_data:
@@ -128,7 +129,7 @@ def classify_severity(
         classification_response = classification_chain.invoke(input_data)
         return format_severity_response(classification_response)
     except Exception as e:
-        logger.error(f"Classification failed: {str(e)}")
+        logger.error(f"Classification failed: {str(e)}", exc_info=True)
         raise ValueError("Failed to classify severity") from e
 
 
@@ -148,13 +149,7 @@ def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
-    input_data = {
-        "user_input": state.messages[-1].content,
-        "chat_history": get_all_user_messages(state.messages),
-    }
-    if state.image_data:
-        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
-
+    input_data = prepare_input_data(state)
     triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
     triage_chain = triage_prompt | llm | triage_parser
@@ -164,6 +159,27 @@ def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
         "response": [triage_response],
         "messages": [("ai", triage_response_str)],
     }
+
+
+def prepare_input_data(state: ChatState) -> dict[str, Any]:
+    """Prepare input data for prompt templates.
+
+    Args:
+        state: Current chat state containing messages and responses
+
+    Returns:
+        Dictionary containing prepared input data with all required fields
+    """
+    input_data = {
+        "user_input": state.messages[-1].content,
+        "chat_history": get_all_user_messages(state.messages),
+        "image": "",
+    }
+
+    if state.image_data:
+        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+
+    return input_data
 
 
 def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
@@ -177,12 +193,7 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
-    input_data = {
-        "user_input": state.messages[-1].content,
-        "chat_history": get_all_user_messages(state.messages),
-    }
-    if state.image_data:
-        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+    input_data = prepare_input_data(state)
 
     triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
@@ -206,12 +217,7 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
-    input_data = {
-        "user_input": state.messages[-1].content,
-        "chat_history": get_all_user_messages(state.messages),
-    }
-    if state.image_data:
-        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+    input_data = prepare_input_data(state)
 
     triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
@@ -235,12 +241,7 @@ def other_severity_node(state: ChatState) -> dict[str, list[Any]]:
             - response: List of processed responses
             - messages: List of tuples containing message type and content
     """
-    input_data = {
-        "user_input": state.messages[-1].content,
-        "chat_history": get_all_user_messages(state.messages),
-    }
-    if state.image_data:
-        input_data["image"] = f"data:image/jpeg;base64,{state.image_data}"
+    input_data = prepare_input_data(state)
 
     triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
     triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
