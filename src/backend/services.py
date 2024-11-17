@@ -48,7 +48,7 @@ from backend.utils import (
 )
 
 logger = logging.getLogger(__name__)
-load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
+load_dotenv()
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
@@ -141,14 +141,14 @@ class SeverityNodeResponse(TypedDict):
     messages: list[tuple[Literal["ai", "human"], str]]
 
 
-def prepare_input_data(state: ChatState) -> dict[str, str]:
+def prepare_input_data(state: ChatState) -> dict[str, Any]:
     """Prepare input data for prompt templates.
 
     Args:
         state (ChatState): Current chat state
 
     Returns:
-        dict[str, str]: Prepared input data with user input, chat history, and image
+        dict[str, str | list[str]]: Prepared input data with user input, chat history, and image
     """
     user_input = state.messages[-1].content
     chat_history = get_all_user_messages(state.messages)
@@ -156,7 +156,11 @@ def prepare_input_data(state: ChatState) -> dict[str, str]:
     if state.image_data:
         image = f"data:image/jpeg;base64,{state.image_data}"
 
-    return {"user_input": user_input, "chat_history": chat_history, "image": image}
+    return {
+        "user_input": user_input,
+        "chat_history": chat_history,
+        "image": image,
+    }
 
 
 def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
@@ -282,7 +286,9 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
             for doctor in doctors
         )
 
-        hospitals = find_nearby_facilities(latitude, longitude, "hospital")
+        hospitals = find_nearby_facilities(
+            latitude, longitude, radius=5000, facility_type="hospital"
+        )
         hospitals_info = "\n\n---\n".join(
             f"Name: {hospital['displayName']['text']}\n"
             f"Directions: [](https://www.google.com/maps/search/?api=1&query={hospital['latitude']},{hospital['longitude']})\n"
