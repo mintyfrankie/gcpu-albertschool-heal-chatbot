@@ -1,5 +1,4 @@
-import urllib
-
+from urllib.parse import urlencode
 import requests
 
 
@@ -27,6 +26,8 @@ def get_doctors(
     page_number = 1
     doctor_list = []
 
+    specializations = specializations[:3]
+
     for specialization in specializations:
         api_url = f"https://www.doctolib.fr/{specialization}/"
         query_params = {
@@ -41,7 +42,7 @@ def get_doctors(
             "accept": "application/json, application/json",
             "content-type": "application/json; charset=utf-8",
             "priority": "u=1, i",
-            "referer": f"{api_url}?{urllib.parse.urlencode(query_params)}",
+            "referer": f"{api_url}?{urlencode(query_params)}",
         }
 
         response = requests.get(api_url, headers=headers, params=query_params)
