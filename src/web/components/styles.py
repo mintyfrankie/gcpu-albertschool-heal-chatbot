@@ -100,7 +100,7 @@ CUSTOM_CSS: Final[str] = """
             z-index: 99;
             border-top: 1px solid #f0f0f0;
         }
-
+        
         [data-testid='stFileUploader'] {
             width: 10%;
         }
@@ -111,6 +111,10 @@ CUSTOM_CSS: Final[str] = """
         }
 
         [data-testid='stFileUploader'] label {
+            display: none;
+        }
+
+        [data-testid='stFileUploader'] div {
             display: none;
         }
         

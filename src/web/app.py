@@ -78,7 +78,7 @@ def handle_user_interaction(input_container: Container) -> None:
     """
     with input_container:
         with st.form(key="chat_form", clear_on_submit=True):
-            user_query = st.text_input("Input", key="chat_input")
+            user_query = st.text_input("", key="chat_input")
 
             location_enabled = st.checkbox("Check my location")
             if location_enabled:
