@@ -78,7 +78,7 @@ def handle_user_interaction(input_container: Container) -> None:
     """
     with input_container:
         with st.form(key="chat_form", clear_on_submit=True):
-            user_query = st.text_input("", key="chat_input")
+            user_query = st.text_input(" ", key="chat_input")
 
             location_enabled = st.checkbox("Check my location")
             if location_enabled:
@@ -115,14 +115,12 @@ def main() -> None:
     initialize_session()
 
     chat_container, input_container = setup_interface()
-    st.session_state.chat_container = chat_container  # Store container in session state
+    st.session_state.chat_container = chat_container
     chat_history = initialize_chat_history()
 
-    # Render existing chat history
     with chat_container:
         render_chat_history(chat_history)
 
-    # Handle user input
     with input_container:
         st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
         handle_user_interaction(input_container)

@@ -1,8 +1,8 @@
+<div align="center">
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/77310871/386966525-8a2e3b1c-962f-4f43-aa0c-1f80a4b063ca.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20241117%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241117T142109Z&X-Amz-Expires=300&X-Amz-Signature=5f662edb4720d1b551f5066e916858fc951d0ab1fe89da5b59ae9c90b9e277c6&X-Amz-SignedHeaders=host" width="200" alt="Google Cloud">
+
 <h1 align="center"> Heal - AI Medical Assistant </h1>
 
-<div align="center">
-
-![Google Cloud](https://raw.githubusercontent.com/google-cloud-platform/hackathon-toolkit/main/images/google-cloud-platform.png)
 
 🧑‍⚕️ An AI-powered medical assistant built for the Google Cloud & Gemini Hackathon
 
