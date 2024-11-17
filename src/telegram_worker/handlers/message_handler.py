@@ -11,7 +11,7 @@ Attributes:
 import logging
 import os
 import time
-from typing import Any, cast
+from typing import Any, Optional, cast
 import telebot
 from telebot.types import Message, PhotoSize
 from langchain_core.runnables import RunnableConfig
@@ -31,6 +31,7 @@ class MessageHandler:
     Attributes:
         config (RunnableConfig): Configuration for message processing with callbacks
         bot (telebot.TeleBot): Reference to the Telegram bot instance for sending messages
+        _image_context (dict[int, bytes]): Temporary storage for image data by chat ID
     """
 
     def __init__(self, bot: telebot.TeleBot) -> None:
@@ -42,6 +43,7 @@ class MessageHandler:
         """
         self.bot: telebot.TeleBot = bot
         self._ensure_temp_dir()
+        self._image_context: dict[int, bytes] = {}
 
     def _ensure_temp_dir(self) -> None:
         """Ensure temporary directory for image storage exists."""
@@ -62,8 +64,6 @@ class MessageHandler:
                 logger.warning("Received photo message with no photo content")
                 return
 
-            # Get the largest photo size
-            # Cast to list of PhotoSize to help type checker
             photos = cast(list[PhotoSize], message.photo)
             photo = max(photos, key=lambda x: x.file_size or 0)
 
@@ -71,7 +71,6 @@ class MessageHandler:
                 logger.warning("No valid photo found in message")
                 return
 
-            # Download the photo
             file_info = self.bot.get_file(photo.file_id)
             if not file_info or not file_info.file_path:
                 logger.error("Could not get file info for photo")
@@ -79,7 +78,8 @@ class MessageHandler:
 
             downloaded_file = self.bot.download_file(file_info.file_path)
 
-            # Save to temp directory
+            self._image_context[message.chat.id] = downloaded_file
+
             file_name = f"{message.chat.id}_{photo.file_id}.jpg"
             file_path = os.path.join(settings.TEMP_IMAGE_DIR, file_name)
 
@@ -88,7 +88,6 @@ class MessageHandler:
 
             logger.info(f"Saved image to {file_path}")
 
-            # Send acknowledgment to user
             self._send_response(
                 message.chat.id,
                 "I've received your image. Please provide any additional context or questions about it.",
@@ -100,24 +99,6 @@ class MessageHandler:
         except Exception as e:
             logger.error(f"Error processing photo: {str(e)}", exc_info=True)
             self._send_error_message(message.chat.id)
-
-    def _cleanup_old_images(self) -> None:
-        """Clean up old temporary image files.
-
-        Removes image files older than the configured retention period.
-        """
-        try:
-            current_time = time.time()
-            for filename in os.listdir(settings.TEMP_IMAGE_DIR):
-                file_path = os.path.join(settings.TEMP_IMAGE_DIR, filename)
-                if (
-                    os.path.getmtime(file_path)
-                    < current_time - settings.IMAGE_RETENTION_PERIOD
-                ):
-                    os.remove(file_path)
-                    logger.info(f"Cleaned up old image: {file_path}")
-        except Exception as e:
-            logger.error(f"Error cleaning up images: {str(e)}")
 
     def handle_text(self, message: Message) -> None:
         """Handle incoming text messages from users.
@@ -150,8 +131,10 @@ class MessageHandler:
                 },
             )
 
+            image_data: Optional[bytes] = self._image_context.pop(message.chat.id, None)
+
             response_data: dict[str, Any] = process_user_input(
-                message.text, config=config
+                message.text, config=config, image=image_data
             )
 
             logger.info(f"Received response data: {response_data}")
@@ -174,6 +157,24 @@ class MessageHandler:
             logger.error(f"Error processing message: {str(e)}", exc_info=True)
             self._send_error_message(message.chat.id)
 
+    def _cleanup_old_images(self) -> None:
+        """Clean up old temporary image files.
+
+        Removes image files older than the configured retention period.
+        """
+        try:
+            current_time = time.time()
+            for filename in os.listdir(settings.TEMP_IMAGE_DIR):
+                file_path = os.path.join(settings.TEMP_IMAGE_DIR, filename)
+                if (
+                    os.path.getmtime(file_path)
+                    < current_time - settings.IMAGE_RETENTION_PERIOD
+                ):
+                    os.remove(file_path)
+                    logger.info(f"Cleaned up old image: {file_path}")
+        except Exception as e:
+            logger.error(f"Error cleaning up images: {str(e)}")
+
     def handle_start(self, message: Message) -> None:
         """Handle the /start command from users.
 
@@ -187,7 +188,10 @@ class MessageHandler:
         welcome_text: str = (
             "👋 Welcome! I'm your AI medical assistant.\n\n"
             "I can help you assess medical situations and provide guidance. "
-            "Please describe your symptoms or concerns."
+            "You can send me text descriptions of your symptoms or concerns, "
+            "and you can also share relevant images for better assessment.\n\n"
+            "Please describe your symptoms or concerns, or share an image along "
+            "with context about what you'd like me to examine."
         )
         self._send_response(message.chat.id, welcome_text)
 
