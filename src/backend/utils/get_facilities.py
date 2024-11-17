@@ -2,6 +2,8 @@ import os
 
 import requests
 
+from dotenv import load_dotenv
+
 
 def find_nearby_facilities(
     lat: float,
@@ -21,6 +23,8 @@ def find_nearby_facilities(
     Returns:
         list: A list of nearby facilities with their display names and locations.
     """
+
+    load_dotenv()
     api_url = "https://places.googleapis.com/v1/places:searchNearby"
 
     query_payload = {
