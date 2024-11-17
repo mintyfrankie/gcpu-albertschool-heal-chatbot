@@ -9,11 +9,14 @@ Attributes:
 """
 
 import logging
+import os
+import time
+from typing import Any, cast
 import telebot
-from telebot.types import Message
+from telebot.types import Message, PhotoSize
 from langchain_core.runnables import RunnableConfig
 from backend.services import process_user_input
-from typing import Any
+from telegram_worker.config import settings
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -38,6 +41,83 @@ class MessageHandler:
                                   for sending responses
         """
         self.bot: telebot.TeleBot = bot
+        self._ensure_temp_dir()
+
+    def _ensure_temp_dir(self) -> None:
+        """Ensure temporary directory for image storage exists."""
+        os.makedirs(settings.TEMP_IMAGE_DIR, exist_ok=True)
+
+    def handle_photo(self, message: Message) -> None:
+        """Handle incoming photo messages from users.
+
+        Downloads and processes photos sent by users, storing them temporarily
+        and generating appropriate responses.
+
+        Args:
+            message (Message): Telegram message object containing the photo
+                             and metadata
+        """
+        try:
+            if not message.photo:
+                logger.warning("Received photo message with no photo content")
+                return
+
+            # Get the largest photo size
+            # Cast to list of PhotoSize to help type checker
+            photos = cast(list[PhotoSize], message.photo)
+            photo = max(photos, key=lambda x: x.file_size or 0)
+
+            if not photo or not photo.file_id:
+                logger.warning("No valid photo found in message")
+                return
+
+            # Download the photo
+            file_info = self.bot.get_file(photo.file_id)
+            if not file_info or not file_info.file_path:
+                logger.error("Could not get file info for photo")
+                return
+
+            downloaded_file = self.bot.download_file(file_info.file_path)
+
+            # Save to temp directory
+            file_name = f"{message.chat.id}_{photo.file_id}.jpg"
+            file_path = os.path.join(settings.TEMP_IMAGE_DIR, file_name)
+
+            with open(file_path, "wb") as new_file:
+                new_file.write(downloaded_file)
+
+            logger.info(f"Saved image to {file_path}")
+
+            # Send acknowledgment to user
+            self._send_response(
+                message.chat.id,
+                "I've received your image. Please provide any additional context or questions about it.",
+            )
+
+            # Clean up old files
+            self._cleanup_old_images()
+
+        except Exception as e:
+            logger.error(f"Error processing photo: {str(e)}", exc_info=True)
+            self._send_error_message(message.chat.id)
+
+    def _cleanup_old_images(self) -> None:
+        """Clean up old temporary image files.
+
+        Removes image files older than the configured retention period.
+        """
+        try:
+            current_time = time.time()
+            for filename in os.listdir(settings.TEMP_IMAGE_DIR):
+                file_path = os.path.join(settings.TEMP_IMAGE_DIR, filename)
+                if (
+                    os.path.getmtime(file_path)
+                    < current_time - settings.IMAGE_RETENTION_PERIOD
+                ):
+                    os.remove(file_path)
+                    logger.info(f"Cleaned up old image: {file_path}")
+        except Exception as e:
+            logger.error(f"Error cleaning up images: {str(e)}")
 
     def handle_text(self, message: Message) -> None:
         """Handle incoming text messages from users.

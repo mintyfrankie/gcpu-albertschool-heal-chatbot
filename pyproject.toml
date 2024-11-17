@@ -37,5 +37,5 @@ allow-direct-references = true
 packages = ["src/backend", "src/telegram_worker", "src/web"]
 
 [tool.rye.scripts]
-telegram-worker = "python src/telegram_worker/app.py"
+telegram = "python src/telegram_worker/app.py"
 web = "streamlit run src/web/app.py"
