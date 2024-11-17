@@ -12,7 +12,6 @@ Typical usage example:
 """
 
 import base64
-import logging
 import os
 from dataclasses import dataclass
 from io import BytesIO
@@ -47,6 +46,7 @@ from backend.utils import (
     get_doctors,
 )
 from backend.utils.logging import setup_logger
+from backend.utils.models import PlacesResponse, Place
 
 logger = setup_logger(__name__)
 load_dotenv()
@@ -227,22 +227,28 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
             for doctor in doctors
         )
 
-        pharmacies = find_nearby_facilities(latitude, longitude)
-        pharmacies_info = "\n\n---\n".join(
-            f"Name: {pharmacy['displayName']['text']}\n"
-            f"Directions: [](https://www.google.com/maps/search/?api=1&query={pharmacy['latitude']},{pharmacy['longitude']})\n"
-            for pharmacy in pharmacies
-        )
+        # Parse the facilities response using Pydantic model
+        facilities_response = find_nearby_facilities(latitude, longitude)
+        try:
+            # Convert dict responses to Place objects first
+            place_objects = [Place(**place) for place in facilities_response]
+            places = PlacesResponse(places=place_objects)
+            pharmacies_info = "\n\n---\n".join(
+                f"Name: {place.displayName.text}\n"
+                f"Directions: [](https://www.google.com/maps/search/?api=1&query={place.location.latitude},{place.location.longitude})\n"
+                for place in places.places
+            )
+        except Exception as e:
+            logger.error(f"Error parsing facilities response: {e}")
+            pharmacies_info = ""
 
         if pharmacies_info and doctors_info:
             response_text += (
                 f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
                 f"Recommended Pharmacies:\n---\n{pharmacies_info}---\n"
             )
-
         elif pharmacies_info:
             response_text += f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
-
         elif doctors_info:
             response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
 
@@ -287,24 +293,28 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
             for doctor in doctors
         )
 
-        hospitals = find_nearby_facilities(
+        hospitals_response = find_nearby_facilities(
             latitude, longitude, radius=5000, facility_type="hospital"
         )
-        hospitals_info = "\n\n---\n".join(
-            f"Name: {hospital['displayName']['text']}\n"
-            f"Directions: [](https://www.google.com/maps/search/?api=1&query={hospital['latitude']},{hospital['longitude']})\n"
-            for hospital in hospitals
-        )
+        try:
+            place_objects = [Place(**place) for place in hospitals_response]
+            places = PlacesResponse(places=place_objects)
+            hospitals_info = "\n\n---\n".join(
+                f"Name: {place.displayName.text}\n"
+                f"Directions: [](https://www.google.com/maps/search/?api=1&query={place.location.latitude},{place.location.longitude})\n"
+                for place in places.places
+            )
+        except Exception as e:
+            logger.error(f"Error parsing hospitals response: {e}")
+            hospitals_info = ""
 
         if hospitals_info and doctors_info:
             response_text += (
                 f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
-                f"Recommended Pharmacies:\n---\n{hospitals_info}---\n"
+                f"Recommended Hospitals:\n---\n{hospitals_info}---\n"
             )
-
         elif hospitals_info:
             response_text += f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"
-
         elif doctors_info:
             response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
 
