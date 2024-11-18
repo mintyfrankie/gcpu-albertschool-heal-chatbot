@@ -46,10 +46,10 @@ from backend.utils import (
     get_doctors,
 )
 from backend.utils.logging import setup_logger
-from backend.utils.models import PlacesResponse, Place
+from backend.utils.models import Place, PlacesResponse
 
 logger = setup_logger(__name__)
-load_dotenv()
+load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
@@ -212,30 +212,34 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
         moderate_severity_prompt | llm | moderate_severity_response_parser
     ).invoke(input_data)
     response_text = response.model_dump().get("Response")
+    specializations = response.model_dump().get("Recommended_Specialists")
+    print("Recommended Specialists: ", specializations)
 
     if st.session_state.location:
         location = st.session_state.location
         latitude = location["coords"]["latitude"]
         longitude = location["coords"]["longitude"]
 
-        specializations = response.model_dump().get("Recommended_Specialists")
         doctors = get_doctors(specializations, latitude, longitude)
         doctors_info = "\n\n---\n".join(
-            f"Name: {doctor['name_with_title']}\n"
-            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
-            f"Book an appointment: {doctor['link']}"
+            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
             for doctor in doctors
         )
 
         # Parse the facilities response using Pydantic model
-        facilities_response = find_nearby_facilities(latitude, longitude)
+        facilities_response = find_nearby_facilities(
+            latitude, longitude, facility_type="pharmacy"
+        )
         try:
             # Convert dict responses to Place objects first
             place_objects = [Place(**place) for place in facilities_response]
             places = PlacesResponse(places=place_objects)
             pharmacies_info = "\n\n---\n".join(
-                f"Name: {place.displayName.text}\n"
-                f"Directions: [](https://www.google.com/maps/search/?api=1&query={place.location.latitude},{place.location.longitude})\n"
+                f"<p>Name: {place.displayName.text}<br>\n"
+                f"Address: {place.formattedAddress}<br>\n"
+                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
                 for place in places.places
             )
         except Exception as e:
@@ -244,8 +248,8 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
 
         if pharmacies_info and doctors_info:
             response_text += (
-                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
-                f"Recommended Pharmacies:\n---\n{pharmacies_info}---\n"
+                f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
             )
         elif pharmacies_info:
             response_text += f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
@@ -287,21 +291,22 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
         specializations = ["medecin-generaliste"]
         doctors = get_doctors(specializations, latitude, longitude, is_urgent=True)
         doctors_info = "\n\n---\n".join(
-            f"Name: {doctor['name_with_title']}\n"
-            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
-            f"Book an appointment: {doctor['link']}"
+            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
             for doctor in doctors
         )
 
         hospitals_response = find_nearby_facilities(
-            latitude, longitude, radius=5000, facility_type="hospital"
+            latitude, longitude, facility_type="hospital"
         )
         try:
             place_objects = [Place(**place) for place in hospitals_response]
             places = PlacesResponse(places=place_objects)
             hospitals_info = "\n\n---\n".join(
-                f"Name: {place.displayName.text}\n"
-                f"Directions: [](https://www.google.com/maps/search/?api=1&query={place.location.latitude},{place.location.longitude})\n"
+                f"<p>Name: {place.displayName.text}<br>\n"
+                f"Address: {place.formattedAddress}<br>\n"
+                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
                 for place in places.places
             )
         except Exception as e:
@@ -310,8 +315,8 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
 
         if hospitals_info and doctors_info:
             response_text += (
-                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n\n"
-                f"Recommended Hospitals:\n---\n{hospitals_info}---\n"
+                f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
             )
         elif hospitals_info:
             response_text += f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"

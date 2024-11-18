@@ -1,17 +1,17 @@
 from typing import List
+
 from pydantic import BaseModel
 
+# class Location(BaseModel):
+#     """Location coordinates model.
 
-class Location(BaseModel):
-    """Location coordinates model.
+#     Attributes:
+#         latitude: The latitude coordinate
+#         longitude: The longitude coordinate
+#     """
 
-    Attributes:
-        latitude: The latitude coordinate
-        longitude: The longitude coordinate
-    """
-
-    latitude: float
-    longitude: float
+#     latitude: float
+#     longitude: float
 
 
 class DisplayName(BaseModel):
@@ -34,7 +34,8 @@ class Place(BaseModel):
         displayName: The display name information of the place
     """
 
-    location: Location
+    id: str
+    formattedAddress: str
     displayName: DisplayName
 
 

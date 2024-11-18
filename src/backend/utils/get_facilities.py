@@ -1,6 +1,7 @@
 import os
+from typing import Any, Dict, List
+
 import requests
-from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 from backend.utils.logging import setup_logger
@@ -26,7 +27,7 @@ def find_nearby_facilities(
     Returns:
         A list of nearby facilities with their display names and locations.
     """
-    load_dotenv()
+    load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
     api_url = "https://places.googleapis.com/v1/places:searchNearby"
 
     logger.info(
@@ -52,7 +53,7 @@ def find_nearby_facilities(
     http_headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": api_key,
-        "X-Goog-FieldMask": "places.displayName,places.location",
+        "X-Goog-FieldMask": "places.id,places.formattedAddress,places.displayName",
     }
 
     try:
