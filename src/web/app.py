@@ -77,16 +77,25 @@ def handle_user_interaction(input_container: Container) -> None:
         input_container: Streamlit container for input elements
     """
     with input_container:
+        st.markdown('<div class="input-container">', unsafe_allow_html=True)
         with st.form(key="chat_form", clear_on_submit=True):
-            user_query = st.text_input(" ", key="chat_input")
-
-            uploaded_file = st.file_uploader(
-                "Upload Image",
-                type=["png", "jpg", "jpeg"],
-                key="file_uploader_key",
-                label_visibility="hidden",
-            )
-            submit_button = st.form_submit_button("Send")
+            col1, col2, col3 = st.columns([0.8, 0.1, 0.1])
+            with col1:
+                user_query = st.text_input(
+                    " ",
+                    key="chat_input",
+                    placeholder="Type your message here...",
+                    label_visibility="hidden",
+                )
+            with col2:
+                uploaded_file = st.file_uploader(
+                    "Upload Image",
+                    type=["png", "jpg", "jpeg"],
+                    key="file_uploader_key",
+                    label_visibility="hidden",
+                )
+            with col3:
+                submit_button = st.form_submit_button("Send")
 
             if submit_button and user_query:
                 image_path = (
@@ -99,6 +108,7 @@ def handle_user_interaction(input_container: Container) -> None:
                     image_path,
                     thread_id=st.session_state.session_id,
                 )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main() -> None:
@@ -120,8 +130,8 @@ def main() -> None:
         render_chat_history(chat_history)
 
     with input_container:
-        st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
         handle_user_interaction(input_container)
+        st.markdown(DISCLAIMER_HTML, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
