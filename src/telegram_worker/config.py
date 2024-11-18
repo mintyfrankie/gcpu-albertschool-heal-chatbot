@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 import tempfile
 
-load_dotenv()
+load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
 
 TELEGRAM_TOKEN: Optional[str] = os.getenv("TELEGRAM_TOKEN")
 GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")

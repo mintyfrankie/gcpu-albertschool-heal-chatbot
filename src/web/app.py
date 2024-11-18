@@ -110,13 +110,14 @@ def handle_user_interaction(input_container: Container) -> None:
                 )
         st.markdown("</div>", unsafe_allow_html=True)
 
+
 def main() -> None:
     """Initialize and run the Streamlit application.
 
     This function sets up the application state, initializes the interface,
     and handles the main application loop including user input processing.
     """
-    load_dotenv()
+    load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
     initialize_session()
 
     chat_container, input_container = setup_interface()

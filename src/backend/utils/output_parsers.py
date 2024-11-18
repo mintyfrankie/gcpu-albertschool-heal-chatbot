@@ -6,7 +6,9 @@ different severity-level responses.
 """
 
 from typing import Literal, Optional
+
 from pydantic import BaseModel, Field, model_validator
+
 from backend.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
@@ -120,9 +122,33 @@ class ModerateSeverityResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_recommended_specialists(cls, values: dict) -> dict:
+        print("Doctor Values: ", values)
+        allowed_specialists = [
+            "allergologue",
+            "cardiologue",
+            "dentiste",
+            "dermatologue",
+            "masseur-kinesitherapeute",
+            "medecin-generaliste",
+            "ophtalmologue",
+            "opticien-lunetier",
+            "orl-oto-rhino-laryngologie",
+            "orthodontiste",
+            "osteopathe",
+            "pediatre",
+            "pedicure-podologue",
+            "psychiatre",
+            "psychologue",
+            "radiologue",
+            "rhumatologue",
+            "sage-femme",
+        ]
         recommended_specialists = values.get("Recommended_Specialists", [])
         if not isinstance(recommended_specialists, list):
             raise ValueError("Recommended specialists must be a list")
+        for specialist in recommended_specialists:
+            if not specialist in allowed_specialists:
+                recommended_specialists.remove(specialist)
         return values
 
 
