@@ -12,9 +12,12 @@ import logging
 import os
 import time
 from typing import Any, Optional, cast
+
 import telebot
-from telebot.types import Message, PhotoSize
 from langchain_core.runnables import RunnableConfig
+from telebot.types import Message, PhotoSize
+
+from backend import user_location
 from backend.services import process_user_input
 from telegram_worker.config import settings
 
@@ -193,6 +196,8 @@ class MessageHandler:
             "Please describe your symptoms or concerns, or share an image along "
             "with context about what you'd like me to examine."
         )
+
+        self.handle_location(message)
         self._send_response(message.chat.id, welcome_text)
 
     def _send_response(self, chat_id: int, text: str) -> None:
@@ -225,3 +230,23 @@ class MessageHandler:
             "Please try again later."
         )
         self._send_response(chat_id, error_text)
+
+    def handle_location(self, message: Message) -> None:
+        """Handle incoming location messages from users.
+
+        Processes the user's location and provides a response based on it.
+
+        Args:
+            message (Message): Telegram message object containing location data
+                               and user metadata
+        """
+        try:
+            location = message.get("location", {})
+
+            # Store the location in the global user_locations dictionary
+            user_location["latitude"] = location.get("latitude", None)
+            user_location["longitude"] = location.get("longitude", None)
+
+        except Exception as e:
+            logger.error(f"Error handling location message: {str(e)}")
+            # self._send_error_message(message.chat.id)

@@ -122,7 +122,6 @@ class ModerateSeverityResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_recommended_specialists(cls, values: dict) -> dict:
-        print("Doctor Values: ", values)
         allowed_specialists = [
             "allergologue",
             "cardiologue",

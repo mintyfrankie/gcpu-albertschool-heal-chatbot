@@ -2,9 +2,9 @@ from backend.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 logger.info("Initializing backend utilities")
-
 from backend.utils.get_doctors import get_doctors
 from backend.utils.get_facilities import find_nearby_facilities
+from backend.utils.global_variables import user_location
 from backend.utils.output_parsers import (
     MildSeverityResponse,
     ModerateSeverityResponse,
@@ -26,6 +26,7 @@ logger.debug("Loaded all utility modules and components")
 __all__ = [
     "get_doctors",
     "find_nearby_facilities",
+    "user_location",
     "MildSeverityResponse",
     "ModerateSeverityResponse",
     "OtherSeverityResponse",

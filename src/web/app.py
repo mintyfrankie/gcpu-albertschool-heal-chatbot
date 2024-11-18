@@ -13,6 +13,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from streamlit_js_eval import get_geolocation
 
+from backend import user_location
 from backend.services import main_graph
 from web.components.chat import handle_user_input, render_chat_history
 from web.components.header import render_header
@@ -117,7 +118,7 @@ def main() -> None:
     This function sets up the application state, initializes the interface,
     and handles the main application loop including user input processing.
     """
-    load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
+    load_dotenv("./credentials/.env")
     initialize_session()
 
     chat_container, input_container = setup_interface()
@@ -125,6 +126,9 @@ def main() -> None:
     chat_history = initialize_chat_history()
 
     st.session_state.location = get_geolocation()
+    if st.session_state.location:
+        user_location["latitude"] = st.session_state.location["coords"]["latitude"]
+        user_location["longitude"] = st.session_state.location["coords"]["longitude"]
 
     with chat_container:
         render_chat_history(chat_history)
