@@ -90,5 +90,5 @@ def convert_image_to_base64(image: Image.Image) -> Optional[str]:
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{img_str}"
     except Exception as e:
-        print(f"Error converting image to base64: {str(e)}")
+        logger.error(f"Error converting image to base64: {str(e)}")
         return None

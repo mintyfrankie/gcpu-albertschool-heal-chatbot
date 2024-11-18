@@ -27,7 +27,9 @@ def find_nearby_facilities(
     Returns:
         A list of nearby facilities with their display names and locations.
     """
-    load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
+
+    load_dotenv("./credentials/.env")
+
     api_url = "https://places.googleapis.com/v1/places:searchNearby"
 
     logger.info(

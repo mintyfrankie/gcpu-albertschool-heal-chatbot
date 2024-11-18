@@ -6,16 +6,16 @@ messages with optional images and processing user queries through the
 backend service.
 """
 
-from typing import Any, Optional
 import logging
-from PIL import Image
+from typing import Any, Optional
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from PIL import Image
 
 from backend.services import process_user_input
-from web.utils.image import image_to_bytes, bytes_to_image
+from web.utils.image import bytes_to_image, image_to_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +95,18 @@ def handle_user_input(
 ) -> None:
     """Handle user input and generate AI response."""
     image_bytes = image_to_bytes(uploaded_image) if uploaded_image else None
+    additional_kwargs = {}
+    if image_bytes:
+        additional_kwargs.update(
+            {
+                "image_bytes": image_bytes,
+                "image": uploaded_image,
+            }
+        )
 
     human_message = HumanMessage(
         content=user_query,
-        additional_kwargs={"image_bytes": image_bytes} if image_bytes else {},
+        additional_kwargs=additional_kwargs,
     )
     chat_history.append(human_message)
 

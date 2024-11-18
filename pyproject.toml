@@ -18,6 +18,7 @@ dependencies = [
     "streamlit-js-eval>=0.1.7",
     "pillow>=11.0.0",
     "google-cloud-vision>=3.8.1",
+    "telebot>=0.0.5",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
