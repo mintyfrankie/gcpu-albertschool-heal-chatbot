@@ -48,6 +48,7 @@ from backend.utils.logging import setup_logger
 from backend.utils.models import Place, PlacesResponse
 
 logger = setup_logger(__name__)
+
 load_dotenv("./credentials/.env")
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")

@@ -22,42 +22,80 @@ We created an AI-powered medical assistant that provides symptom assessment and 
 
 - 🌐 **Multi-Platform Support**
   - Web interface built with Streamlit
-  - Telegram bot integration
+  - Telegram bot integration with image support
   - Consistent experience across platforms
+  - Location-aware recommendations
 
 - 🧠 **Intelligent Triage System**
   - Severity classification (Mild, Moderate, Severe)
   - Context-aware responses
   - Follow-up questions when needed
+  - Image analysis for better diagnosis
 
 - 📸 **Multi-Modal Capabilities**
-  - Image analysis support
+  - Image analysis support via Gemini Vision
   - Combined text and image context processing
   - Temporary image storage with automatic cleanup
+  - Secure image handling across platforms
 
 - 🔒 **Safety Features**
   - Medical disclaimers
   - Emergency guidance for severe cases
   - Confidence level assessment
+  - Location-based emergency facility recommendations
+
+- 📍 **Location Services**
+  - Nearby medical facility recommendations
+  - Emergency hospital locations
+  - Local pharmacy finder
+  - Specialist doctor recommendations
 
 ## Technical Implementation
 
 ### LangGraph-based Triage System
 
-Our medical assistant implements an intelligent triage system using LangGraph, processing user inputs through a directed graph of specialized nodes:
+Our medical assistant implements an intelligent triage system using LangGraph, processing multi-modal inputs through a directed graph:
 
 ```mermaid
 graph TD
-A[User Input] --> B[Severity Classification]
-B -->|Mild| C[Mild Handler]
-B -->|Moderate| D[Moderate Handler]
-B -->|Severe| E[Severe Handler]
-B -->|Other| F[General Handler]
-C & D & E & F --> G[Response Generation]
-G[Response Generation] --> H[Output Formatting]
-H --> I[Response Validation]
-I --> A[User Input]
+    A[User Input] --> B[Input Processor]
+    B --> C[Text Analysis]
+    B --> D[Image Analysis]
+    
+    C & D --> E[Severity Classifier]
+    
+    E -->|Mild| F[Self-Care Guide]
+    E -->|Moderate| G[Medical Referral]
+    E -->|Severe| H[Emergency Response]
+    
+    G & H --> I[Location Services]
+    F & G & H --> J[Response Generator]
+    I --> J
+    J --> K[Output]
+    K --> A
 ```
+
+The system processes inputs through specialized nodes:
+
+1. **Input Processing**
+   - Multi-modal input handling (text/images)
+   - Image analysis via Gemini Vision
+   - Context extraction
+
+2. **Severity Classification**
+   - Analyzes combined inputs
+   - Determines severity level
+   - Routes to appropriate handler
+
+3. **Location Services**
+   - Activates for moderate/severe cases
+   - Finds nearby medical facilities
+   - Recommends specialists
+
+4. **Response Generation**
+   - Combines medical guidance with location data
+   - Formats for platform (Web/Telegram)
+   - Validates medical information
 
 ### Prompt Engineering & Security
 
@@ -221,3 +259,134 @@ Our prompts implement multiple security layers:
    - Flag suspicious interactions
    - Route to fallback handlers
    - Log security incidents
+
+### Backend Architecture
+
+#### Core Components
+
+```mermaid
+graph TD
+    A[User Interface Layer] --> B[Service Layer]
+    B --> C[Utils Layer]
+    B --> D[Models Layer]
+    
+    subgraph "User Interface Layer"
+        A1[Web Interface]
+        A2[Telegram Bot]
+    end
+    
+    subgraph "Service Layer"
+        B1[Input Processing]
+        B2[Triage Service]
+        B3[Response Generation]
+    end
+    
+    subgraph "Utils Layer"
+        C1[Logging]
+        C2[Output Formatting]
+        C3[Location Services]
+        C4[Image Processing]
+    end
+    
+    subgraph "Models Layer"
+        D1[Response Models]
+        D2[Location Models]
+        D3[Severity Models]
+    end
+```
+
+#### Key Components
+
+1. **Service Layer**
+   - Input Processing: Handles multi-modal inputs (text/images)
+   - Triage Service: Classifies severity and routes to appropriate handlers
+   - Response Generation: Formats and validates AI responses
+
+2. **Utils Layer**
+   ```python
+   # Logging Configuration
+   def setup_logger(name: Optional[str] = None) -> logging.Logger:
+       """Configures centralized logging with consistent formatting."""
+   
+   # Output Formatting
+   def format_severity_response(response: SeverityClassificationResponse) -> str:
+       """Formats severity classification into user-friendly response."""
+   
+   # Location Services
+   def find_nearby_facilities(latitude: float, longitude: float) -> List[Place]:
+       """Finds and validates nearby medical facilities."""
+   ```
+
+3. **Models Layer**
+   ```python
+   class SeverityClassificationResponse(BaseModel):
+       """Validates severity classification responses."""
+       Severity: Literal["Mild", "Moderate", "Severe", "Other"]
+       Response: str
+   
+   class Location(BaseModel):
+       """Represents geographical coordinates."""
+       latitude: float
+       longitude: float
+   
+   class Place(BaseModel):
+       """Represents a medical facility."""
+       location: Location
+       displayName: DisplayName
+   ```
+
+#### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant I as Interface Layer
+    participant S as Service Layer
+    participant AI as Gemini AI
+    participant L as Location Services
+    
+    U->>I: Submit Query/Image
+    I->>S: Process Input
+    S->>AI: Generate Response
+    S->>L: Get Location Data
+    L-->>S: Facility Data
+    S-->>I: Enhanced Response
+    I-->>U: Final Output
+```
+
+#### Error Handling
+
+The system implements comprehensive error handling:
+
+```python
+try:
+    # Process user input and generate response
+    response = process_user_input(query, image_path)
+except Exception as e:
+    logger.error(f"Error processing input: {str(e)}")
+    return fallback_response()
+```
+
+Key features:
+- Centralized logging with context capture
+- Graceful degradation for service failures
+- Automatic retry for transient errors
+- Detailed error reporting for debugging
+
+#### Configuration Management
+
+The system uses environment-based configuration:
+
+```python
+class Settings(BaseSettings):
+    """Application settings with environment variable support."""
+    GOOGLE_API_KEY: str
+    TELEGRAM_TOKEN: str
+    IMAGE_RETENTION_PERIOD: int = 3600
+    TEMP_IMAGE_DIR: str = "./temp_images"
+```
+
+This ensures:
+- Secure credential management
+- Environment-specific configurations
+- Easy deployment across different environments
