@@ -1,7 +1,7 @@
 <div align="center">
 <img src="https://www.aswf.io/wp-content/uploads/sites/69/2018/08/logo_google_cloud.png" width="200" alt="Google Cloud">
 
-<h1 align="center">Heal - AI Medical Assistant | <a href="https://github.com/mintyfrankie/gcpu-albertschool-heal-chatbot">Github</a></h1>
+<h1 align="center">Heal - AI Medical Assistant | <a href="https://github.com/mintyfrankie/gcpu-albertschool-heal-chatbot">Github</a> | <a href="https://drive.google.com/drive/folders/1H5S3Koc8w0lJEC9As2OoQG0krPD4hzmf?usp=sharing">Pitch</a></h1>
 
 
 🧑‍⚕️ An AI-powered medical assistant built for the Google Cloud & Gemini Hackathon
