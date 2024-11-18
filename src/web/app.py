@@ -67,7 +67,7 @@ def setup_interface() -> Tuple[Container, Container]:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     render_header()
 
-    return st.container(), st.container()
+    return st.container(border=False), st.container(border=False)
 
 
 def handle_user_interaction(input_container: Container) -> None:

@@ -178,6 +178,19 @@ CUSTOM_CSS: Final[str] = """
             font-size: 15px;  /* Reset font size for new text */
         }
 
+        [data-testid='stForm'] {
+            position: fixed;
+            bottom: 0;
+            left: 1rem;
+            right: 1rem;
+            z-index: 99;
+            margin-bottom: 3rem;
+        }
+
+        .input-container {
+            border: none;
+            background: transparent;
+        }
     </style>
 
 """
