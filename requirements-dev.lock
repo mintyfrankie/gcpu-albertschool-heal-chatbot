@@ -22,8 +22,6 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.6.2.post1
     # via httpx
-appnope==0.1.4
-    # via ipykernel
 asttokens==2.4.1
     # via stack-data
 attrs==24.2.0
@@ -43,6 +41,11 @@ charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via streamlit
+colorama==0.4.6
+    # via click
+    # via ipython
+    # via pytest
+    # via tqdm
 comm==0.2.2
     # via ipykernel
 debugpy==1.8.7
@@ -63,6 +66,7 @@ google-ai-generativelanguage==0.6.10
 google-api-core==2.22.0
     # via google-ai-generativelanguage
     # via google-api-python-client
+    # via google-cloud-vision
     # via google-generativeai
 google-api-python-client==2.151.0
     # via google-generativeai
@@ -71,14 +75,19 @@ google-auth==2.36.0
     # via google-api-core
     # via google-api-python-client
     # via google-auth-httplib2
+    # via google-cloud-vision
     # via google-generativeai
 google-auth-httplib2==0.2.0
     # via google-api-python-client
+google-cloud-vision==3.8.1
+    # via gcpu-albert-hackathon
 google-generativeai==0.8.3
     # via langchain-google-genai
 googleapis-common-protos==1.65.0
     # via google-api-core
     # via grpcio-status
+greenlet==3.1.1
+    # via sqlalchemy
 grpcio==1.67.1
     # via google-api-core
     # via grpcio-status
@@ -182,9 +191,8 @@ pandas==2.2.3
     # via streamlit
 parso==0.8.4
     # via jedi
-pexpect==4.9.0
-    # via ipython
 pillow==11.0.0
+    # via gcpu-albert-hackathon
     # via streamlit
 platformdirs==4.3.6
     # via jupyter-core
@@ -197,9 +205,11 @@ propcache==0.2.0
 proto-plus==1.25.0
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-vision
 protobuf==5.28.3
     # via google-ai-generativelanguage
     # via google-api-core
+    # via google-cloud-vision
     # via google-generativeai
     # via googleapis-common-protos
     # via grpcio-status
@@ -207,8 +217,6 @@ protobuf==5.28.3
     # via streamlit
 psutil==6.1.0
     # via ipykernel
-ptyprocess==0.7.0
-    # via pexpect
 pure-eval==0.2.3
     # via stack-data
 pyarrow==18.0.0
@@ -248,6 +256,8 @@ python-dotenv==1.0.1
     # via pydantic-settings
 pytz==2024.2
     # via pandas
+pywin32==308
+    # via jupyter-core
 pyyaml==6.0.2
     # via langchain
     # via langchain-core
@@ -285,7 +295,10 @@ sqlalchemy==2.0.36
     # via langchain
 stack-data==0.6.3
     # via ipython
-streamlit==1.40.0
+streamlit==1.40.1
+    # via gcpu-albert-hackathon
+    # via streamlit-js-eval
+streamlit-js-eval==0.1.7
     # via gcpu-albert-hackathon
 tenacity==9.0.0
     # via langchain
@@ -320,6 +333,8 @@ uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.2.3
     # via requests
+watchdog==6.0.0
+    # via streamlit
 wcwidth==0.2.13
     # via prompt-toolkit
 yarl==1.17.1

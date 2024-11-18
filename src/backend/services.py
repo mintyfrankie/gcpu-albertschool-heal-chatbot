@@ -1,26 +1,34 @@
-"""
-Service layer for the chatbot that handles business logic and implements a LangGraph-based
-triage system with severity classification.
+"""Service layer for the chatbot that handles business logic and implements a LangGraph-based triage system.
 
-The graph workflow:
+This module provides the core functionality for processing user inputs through a severity-based
+triage system using LangGraph. It implements a workflow that:
 1. Takes user input and classifies severity
 2. Routes to appropriate severity handler node
 3. Generates appropriate response based on severity level
+
+Typical usage example:
+    result = process_user_input("I have a headache", thread_id="123")
+    print(result['messages'])
 """
 
-from typing import Annotated, Any
+import base64
+import os
 from dataclasses import dataclass
-import logging
+from io import BytesIO
+from typing import Annotated, Any, Literal, Optional, TypedDict
+
+import streamlit as st
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
-from langgraph.graph.state import CompiledStateGraph
-from langchain.schema import HumanMessage, AIMessage
+from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.graph.state import CompiledStateGraph
+from PIL import Image
 
 from backend import format_severity_response
 from backend.utils import (
@@ -34,28 +42,42 @@ from backend.utils import (
     OtherSeverityResponse,
     SevereSeverityResponse,
     SeverityClassificationResponse,
+    find_nearby_facilities,
+    get_doctors,
 )
+from backend.utils.logging import setup_logger
+from backend.utils.models import Place, PlacesResponse
 
-logger = logging.getLogger(__name__)
-load_dotenv()
+logger = setup_logger(__name__)
+load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
+
+GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
 
 
 @dataclass
 class ChatState:
-    """State management for chat interactions."""
+    """State management for chat interactions.
+
+    Attributes:
+        responses: List of previous responses
+        messages: List of chat messages (human and AI)
+        image_data: Optional base64 encoded image string for multimodal processing
+    """
 
     responses: list[dict[str, Any]]
     messages: Annotated[list[HumanMessage | AIMessage], add_messages]
+    image_data: Optional[str] = None
 
 
 def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]:
-    """Extract all user messages from chat history.
+    """Extract and format all user messages from chat history.
 
     Args:
-        messages: List of chat messages
+        messages: List of chat messages containing both human and AI messages
 
     Returns:
-        List of formatted user message strings
+        List of formatted user message strings, each prefixed with "User Input N: "
     """
     return [
         f"User Input {i}: {msg.content}"
@@ -64,17 +86,34 @@ def get_all_user_messages(messages: list[HumanMessage | AIMessage]) -> list[str]
     ]
 
 
-def classify_severity(state: ChatState) -> str:
-    """Classify severity of user input with error handling.
+def get_image_str(image: Image.Image) -> str:
+    """Convert PIL Image to base64 string for LLM processing.
 
     Args:
-        state: Current chat state
+        image: PIL Image object to convert
 
     Returns:
-        Classified severity level
+        Base64 encoded string representation of the image
+    """
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/jpeg;base64,{img_str}"
+
+
+def classify_severity(
+    chat_state: ChatState,
+) -> str:
+    """Classify the severity of user input using LLM-based classification.
+
+    Args:
+        chat_state: Current chat state containing messages, responses and optional image
+
+    Returns:
+        String indicating severity level ("Mild", "Moderate", "Severe", or "Other")
 
     Raises:
-        ValueError: If classification fails
+        ValueError: If classification fails or returns invalid severity level
     """
     try:
         classification_prompt = ChatPromptTemplate.from_template(MAIN_PROMPT_TEMPLATE)
@@ -82,112 +121,261 @@ def classify_severity(state: ChatState) -> str:
             pydantic_object=SeverityClassificationResponse
         )
         classification_chain = classification_prompt | llm | classification_parser
-        classification_response = classification_chain.invoke(
-            {
-                "user_input": state.messages[-1].content,
-                "chat_history": get_all_user_messages(state.messages),
-            }
-        )
+
+        input_data = {
+            "user_input": chat_state.messages[-1].content,
+            "chat_history": get_all_user_messages(chat_state.messages),
+            "image": "",
+        }
+
+        if chat_state.image_data:
+            input_data["image"] = f"data:image/jpeg;base64,{chat_state.image_data}"
+
+        classification_response = classification_chain.invoke(input_data)
         return format_severity_response(classification_response)
     except Exception as e:
-        logger.error(f"Classification failed: {str(e)}")
         raise ValueError("Failed to classify severity") from e
 
 
-def mild_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle mild severity cases.
+class SeverityNodeResponse(TypedDict):
+    response: list[Any]  # Could be more specific based on actual response type
+    messages: list[tuple[Literal["ai", "human"], str]]
+
+
+def prepare_input_data(state: ChatState) -> dict[str, Any]:
+    """Prepare input data for prompt templates.
 
     Args:
-        state: Current chat state
+        state (ChatState): Current chat state
 
     Returns:
-        Dictionary containing response and messages
+        dict[str, str | list[str]]: Prepared input data with user input, chat history, and image
     """
-    triage_prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
-    triage_response_str = triage_response.model_dump().get("Response")
+    user_input = state.messages[-1].content
+    chat_history = get_all_user_messages(state.messages)
+    image = ""
+    if state.image_data:
+        image = f"data:image/jpeg;base64,{state.image_data}"
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "user_input": user_input,
+        "chat_history": chat_history,
+        "image": image,
     }
 
 
-def moderate_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle moderate severity cases.
+def mild_severity_node(state: ChatState) -> SeverityNodeResponse:
+    """Process and generate response for mild severity cases.
 
     Args:
-        state: Current chat state
+        state (ChatState): Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
-    triage_prompt = ChatPromptTemplate.from_template(MODERATE_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=ModerateSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
-    triage_response_str = triage_response.model_dump().get("Response")
+    input_data = prepare_input_data(state)
+
+    prompt = ChatPromptTemplate.from_template(MILD_SEVERITY_PROMPT_TEMPLATE)
+    parser = PydanticOutputParser(pydantic_object=MildSeverityResponse)
+
+    response = (prompt | llm | parser).invoke(input_data)
+    response_str = response.model_dump().get("Response")
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_str)],
     }
 
 
-def severe_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle severe severity cases.
+def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for moderate severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
-    triage_prompt = ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=SevereSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
-    triage_response_str = triage_response.model_dump().get("Response")
+    input_data = prepare_input_data(state)
+
+    moderate_severity_prompt = ChatPromptTemplate.from_template(
+        MODERATE_SEVERITY_PROMPT_TEMPLATE
+    )
+    moderate_severity_response_parser = PydanticOutputParser(
+        pydantic_object=ModerateSeverityResponse
+    )
+    response = (
+        moderate_severity_prompt | llm | moderate_severity_response_parser
+    ).invoke(input_data)
+    response_text = response.model_dump().get("Response")
+    specializations = response.model_dump().get("Recommended_Specialists")
+    print("Recommended Specialists: ", specializations)
+
+    if st.session_state.location:
+        location = st.session_state.location
+        latitude = location["coords"]["latitude"]
+        longitude = location["coords"]["longitude"]
+
+        doctors = get_doctors(specializations, latitude, longitude)
+        doctors_info = "\n\n---\n".join(
+            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
+            for doctor in doctors
+        )
+
+        # Parse the facilities response using Pydantic model
+        facilities_response = find_nearby_facilities(
+            latitude, longitude, facility_type="pharmacy"
+        )
+        try:
+            # Convert dict responses to Place objects first
+            place_objects = [Place(**place) for place in facilities_response]
+            places = PlacesResponse(places=place_objects)
+            pharmacies_info = "\n\n---\n".join(
+                f"<p>Name: {place.displayName.text}<br>\n"
+                f"Address: {place.formattedAddress}<br>\n"
+                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
+                for place in places.places
+            )
+        except Exception as e:
+            logger.error(f"Error parsing facilities response: {e}")
+            pharmacies_info = ""
+
+        if pharmacies_info and doctors_info:
+            response_text += (
+                f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+            )
+        elif pharmacies_info:
+            response_text += f"\n\nRecommended Pharmacies:\n---\n{pharmacies_info}---\n"
+        elif doctors_info:
+            response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_text)],
     }
 
 
-def other_severity_node(state: ChatState) -> dict[str, list]:
-    """Handle other severity cases.
+def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for severe severity cases.
 
     Args:
-        state: Current chat state
+        state: Current chat state containing messages and responses
 
     Returns:
-        Dictionary containing response and messages
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
     """
-    triage_prompt = ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
-    triage_parser = PydanticOutputParser(pydantic_object=OtherSeverityResponse)
-    triage_chain = triage_prompt | llm | triage_parser
-    triage_response = triage_chain.invoke({"user_input": state.messages})
-    triage_response_str = triage_response.model_dump().get("Response")
+    input_data = prepare_input_data(state)
+
+    response = (
+        ChatPromptTemplate.from_template(SEVERE_SEVERITY_PROMPT_TEMPLATE)
+        | llm
+        | PydanticOutputParser(pydantic_object=SevereSeverityResponse)
+    ).invoke(input_data)
+
+    response_text = response.model_dump().get("Response")
+
+    if st.session_state.location:
+        location = st.session_state.location
+        latitude = location["coords"]["latitude"]
+        longitude = location["coords"]["longitude"]
+
+        specializations = ["medecin-generaliste"]
+        doctors = get_doctors(specializations, latitude, longitude, is_urgent=True)
+        doctors_info = "\n\n---\n".join(
+            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
+            for doctor in doctors
+        )
+
+        hospitals_response = find_nearby_facilities(
+            latitude, longitude, facility_type="hospital"
+        )
+        try:
+            place_objects = [Place(**place) for place in hospitals_response]
+            places = PlacesResponse(places=place_objects)
+            hospitals_info = "\n\n---\n".join(
+                f"<p>Name: {place.displayName.text}<br>\n"
+                f"Address: {place.formattedAddress}<br>\n"
+                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
+                for place in places.places
+            )
+        except Exception as e:
+            logger.error(f"Error parsing hospitals response: {e}")
+            hospitals_info = ""
+
+        if hospitals_info and doctors_info:
+            response_text += (
+                f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"
+                f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+            )
+        elif hospitals_info:
+            response_text += f"\n\nRecommended Hospitals:\n---\n{hospitals_info}---\n"
+        elif doctors_info:
+            response_text += f"\n\nRecommended Doctors:\n---\n{doctors_info}---\n"
+
     return {
-        "response": [triage_response],
-        "messages": [("ai", triage_response_str)],
+        "response": [response],
+        "messages": [("ai", response_text)],
+    }
+
+
+def other_severity_node(state: ChatState) -> dict[str, list[Any]]:
+    """Process and generate response for other/unknown severity cases.
+
+    Args:
+        state: Current chat state containing messages and responses
+
+    Returns:
+        Dictionary containing:
+            - response: List of processed responses
+            - messages: List of tuples containing message type and content
+    """
+    input_data = prepare_input_data(state)
+    response = (
+        ChatPromptTemplate.from_template(OTHER_SEVERITY_PROMPT_TEMPLATE)
+        | llm
+        | PydanticOutputParser(pydantic_object=OtherSeverityResponse)
+    ).invoke(input_data)
+
+    response_text = response.model_dump().get("Response")
+
+    return {
+        "response": [response],
+        "messages": [("ai", response_text)],
     }
 
 
 def main_graph() -> (
-    tuple[dict, CompiledStateGraph, ChatGoogleGenerativeAI, MemorySaver]
+    tuple[dict[str, dict], CompiledStateGraph, ChatGoogleGenerativeAI, MemorySaver]
 ):
-    """Initialize and configure the main graph workflow.
+    """Initialize and configure the main LangGraph workflow.
+
+    Creates and configures the graph with all severity nodes and their connections.
+    Initializes the LLM and memory components.
 
     Returns:
-        Tuple containing config, compiled graph, LLM instance, and memory
+        Tuple containing:
+            - Configuration dictionary
+            - Compiled state graph
+            - LLM instance
+            - Memory saver instance
     """
     base_memory = MemorySaver()
     base_memory.storage.clear()
 
     base_llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-001",
-        temperature=0,
+        model=GEMINI_VERSION,
+        temperature=GEMINI_TEMPERATURE,
         max_tokens=None,
     )
 
@@ -215,7 +403,7 @@ def main_graph() -> (
 
     compiled_graph = graph.compile(base_memory)
     config_dict = {
-        "configurable": {"thread_id": "3"},
+        "configurable": {},
     }
     return (
         config_dict,
@@ -228,28 +416,104 @@ def main_graph() -> (
 config, graph, llm, memory = main_graph()
 
 
-def process_user_input(
-    user_input: str,
-    config: RunnableConfig = {"configurable": {"thread_id": "3"}},
-) -> dict[str, Any]:
-    """Process user input through the graph workflow.
+def validate_config(config: Optional[RunnableConfig]) -> None:
+    """Validate the configuration for processing user input.
 
     Args:
-        user_input: User's message
-        config: Graph configuration
+        config: Configuration to validate
+
+    Raises:
+        ValueError: If configuration is invalid
+    """
+    if not config:
+        raise ValueError("Config is required for checkpointing")
+
+    if not isinstance(config.get("configurable"), dict):
+        raise ValueError("Config must contain 'configurable' dictionary")
+
+    required_keys = ["thread_id", "checkpoint_ns", "checkpoint_id"]
+    missing_keys = [
+        key for key in required_keys if key not in config.get("configurable", {})
+    ]
+    if missing_keys:
+        raise ValueError(f"Missing required config keys: {missing_keys}")
+
+
+def prepare_image_data(image: Optional[bytes]) -> Optional[str]:
+    """Prepare image data for processing.
+
+    Args:
+        image: Raw image bytes
 
     Returns:
-        Dictionary containing the response
+        Base64 encoded image string or None
     """
+    if not image:
+        return None
+    return base64.b64encode(image).decode("utf-8")
+
+
+def process_user_input(
+    user_input: str,
+    config: Optional[RunnableConfig] = None,
+    image: Optional[bytes] = None,
+) -> dict[str, Any]:
+    """Process user input through the graph workflow."""
     try:
+        logger.info("Processing new user input")
+        logger.debug(f"User input: {user_input}")
+        if image:
+            logger.debug("Image data received with input")
+
+        validate_config(config)
+
+        image_data = prepare_image_data(image)
+
         result = graph.invoke(
             {
                 "responses": [],
                 "messages": [HumanMessage(content=user_input)],
+                "image_data": image_data,
             },
             config=config,
         )
-        return result
+
+        logger.info(f"Raw graph result: {result}")
+
+        if isinstance(result, dict):
+            if "messages" in result and isinstance(result["messages"], list):
+                formatted_messages = []
+                for msg in result["messages"]:
+                    if hasattr(msg, "content"):
+                        if hasattr(msg, "type") and msg.type == "ai":
+                            formatted_messages.append(("ai", msg.content))
+                        elif isinstance(msg, HumanMessage):
+                            formatted_messages.append(("human", msg.content))
+                        elif isinstance(msg, AIMessage):
+                            formatted_messages.append(("ai", msg.content))
+
+                if formatted_messages:
+                    return {"messages": formatted_messages}
+
+            if "response" in result and result["response"]:
+                response = result["response"]
+                if isinstance(response, list) and response:
+                    first_response = response[0]
+                    if hasattr(first_response, "model_dump"):
+                        response_text = first_response.model_dump().get("Response", "")
+                        if response_text:
+                            return {"messages": [("ai", response_text)]}
+
+        return {
+            "messages": [
+                ("ai", "I apologize, but I couldn't process your request properly.")
+            ]
+        }
+
     except Exception as e:
-        logger.error(f"Error processing input: {str(e)}")
-        raise RuntimeError(f"Failed to process input: {str(e)}") from e
+        logger.error("Failed to process user input", exc_info=True)
+        return {
+            "messages": [
+                ("ai", f"An error occurred while processing your request: {str(e)}")
+            ]
+        }

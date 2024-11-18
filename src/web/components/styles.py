@@ -90,13 +90,6 @@ CUSTOM_CSS: Final[str] = """
             margin-bottom: 1.5rem;
         }
 
-        [data-testid="stChatInput"] {
-            position: fixed;
-            bottom: 3rem; 
-            background: white;
-            z-index: 99;
-        }
-
         .disclaimer-container {
             position: fixed;
             bottom: 0;
@@ -107,7 +100,125 @@ CUSTOM_CSS: Final[str] = """
             z-index: 99;
             border-top: 1px solid #f0f0f0;
         }
+        
+        [data-testid='stFileUploader'] {
+            width: 10%;
+        }
+
+        [data-testid='stFileUploader'] section {
+            padding: 0;
+            float: left;
+        }
+
+        [data-testid='stWidgetLabel'] {
+            display: none;
+        }
+
+        [data-testid='stFileUploader'] div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section > input + div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section + div {
+            float: right;
+            padding-top: 0;
+        }
+
+        .input-container {
+            position: fixed;
+            bottom: 2.5rem;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 1rem;
+            z-index: 98;
+            border-top: 1px solid #f0f0f0;
+            margin: 0;
+        }
+
+        .input-container .stForm {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .input-container .row-widget.stButton {
+            width: 10%;
+            float: right;
+        }
+
+        [data-testid="stAppViewContainer"] > .main {
+            padding-bottom: 8rem;
+        }
+
+        .disclaimer-container {
+            z-index: 99;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .input-area {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .input-area .stTextInput {
+            flex-grow: 1;
+        }
+  
+        [data-testid='stBaseButton-secondary'] {
+            font-size: 0 !important;  /* Hide original text */
+        }
+
+        [data-testid="stBaseButton-secondary"]::after {
+            content: "Image";
+            font-size: 15px;  /* Reset font size for new text */
+        }
+
+        [data-testid='stForm'] {
+            position: fixed;
+            bottom: 0;
+            left: 1rem;
+            right: 1rem;
+            z-index: 99;
+            margin-bottom: 3rem;
+        }
+
+        .input-container {
+            border: none;
+            background: transparent;
+        }
+        
+        [data-testid='stFileUploader'] {
+            width: 10%;
+        }
+
+        [data-testid='stFileUploader'] section {
+            padding: 0;
+            float: left;
+        }
+
+        [data-testid='stFileUploader'] label {
+            display: none;
+        }
+
+        [data-testid='stFileUploader'] div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section > input + div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section + div {
+            float: right;
+            padding-top: 0;
+        }
     </style>
+
 """
 
 DISCLAIMER_HTML: Final[str] = """

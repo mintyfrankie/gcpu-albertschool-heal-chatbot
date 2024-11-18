@@ -1,27 +1,41 @@
-"""Chat interface component for the Streamlit application."""
+"""Chat interface component for the Streamlit application.
 
-from typing import Any
+This module provides components for rendering chat messages and handling
+user input in the Streamlit interface. It includes support for displaying
+messages with optional images and processing user queries through the
+backend service.
+"""
 
+from typing import Any, Optional
 import logging
+from PIL import Image
+
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 
 from backend.services import process_user_input
+from web.utils.image import image_to_bytes, bytes_to_image
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
-def render_message(message: AIMessage | HumanMessage) -> None:
-    """Render a single chat message.
+def render_message(
+    message: AIMessage | HumanMessage, image: Optional[Image.Image] = None
+) -> None:
+    """Render a single chat message with optional image.
 
     Args:
-        message: The message to render
+        message: The message to render (either AI or Human message)
+        image: Optional PIL Image to display
     """
     avatar = "🧑‍⚕️" if isinstance(message, AIMessage) else "👤"
     role = "AI" if isinstance(message, AIMessage) else "Human"
 
     with st.chat_message(role, avatar=avatar):
+        if image:
+            st.image(image, caption="Uploaded Image", use_container_width=True)
+
         st.markdown(
             f"""
             <div class='chat-message {role.lower()}-message'>
@@ -33,63 +47,91 @@ def render_message(message: AIMessage | HumanMessage) -> None:
 
 
 def render_chat_history(messages: list[AIMessage | HumanMessage]) -> None:
-    """Render the chat history.
+    """Render the complete chat history.
 
     Args:
-        messages: List of messages to render
+        messages: List of messages to render in the chat interface
     """
     for message in messages:
-        render_message(message)
+        # Get image from message metadata if it exists
+        image = (
+            message.additional_kwargs.get("image")
+            if hasattr(message, "additional_kwargs")
+            else None
+        )
+        render_message(message, image)
+
+
+def extract_ai_message(response: Any) -> Optional[AIMessage]:
+    """Extract AI message from various response formats.
+
+    Args:
+        response: Response object from the backend service
+
+    Returns:
+        Extracted AIMessage or None if extraction fails
+    """
+    if isinstance(response, AIMessage):
+        return response
+    elif isinstance(response, tuple) and len(response) >= 2:
+        msg_type, content, *_ = response
+        if msg_type == "ai" and isinstance(content, str):
+            return AIMessage(content=content)
+    elif isinstance(response, dict) and "messages" in response:
+        messages = response["messages"]
+        if messages and isinstance(messages[-1], tuple):
+            msg_type, content = messages[-1]
+            if msg_type == "ai" and isinstance(content, str):
+                return AIMessage(content=content)
+    return None
 
 
 def handle_user_input(
     user_query: str,
     chat_container: Any,
     chat_history: list[AIMessage | HumanMessage],
+    uploaded_image: Optional[Image.Image] = None,
+    thread_id: Optional[str] = None,
 ) -> None:
-    """Handle user input and generate AI response using the graph workflow.
+    """Handle user input and generate AI response."""
+    image_bytes = image_to_bytes(uploaded_image) if uploaded_image else None
 
-    Args:
-        user_query: The user's input query
-        chat_container: Streamlit container for chat messages
-        chat_history: List of chat messages
-    """
-    chat_history.append(HumanMessage(content=user_query))
+    human_message = HumanMessage(
+        content=user_query,
+        additional_kwargs={"image_bytes": image_bytes} if image_bytes else {},
+    )
+    chat_history.append(human_message)
 
     with chat_container:
-        render_message(HumanMessage(content=user_query))
+        display_image = bytes_to_image(image_bytes) if image_bytes else None
+        render_message(human_message, display_image)
 
         try:
             with st.spinner("Analyzing and processing your query..."):
-                # Process through the graph workflow
-                response = process_user_input(user_query)
+                config: RunnableConfig = {
+                    "configurable": {
+                        "thread_id": thread_id or "default",
+                        "checkpoint_ns": "chat",
+                        "checkpoint_id": thread_id or "default",
+                    }
+                }
 
-                # Extract response from the graph output
+                response = process_user_input(
+                    user_query,
+                    config=config,
+                    image=image_bytes if image_bytes else None,
+                )
+
                 if response and isinstance(response, dict) and "messages" in response:
                     messages = response["messages"]
                     if messages:
-                        last_message = messages[-1]
-
-                        # Handle different response formats
-                        if isinstance(last_message, AIMessage):
-                            ai_message = last_message
-                        elif isinstance(last_message, tuple) and len(last_message) == 2:
-                            _, content = last_message
-                            ai_message = AIMessage(content=content)
-                        elif isinstance(last_message, str):
-                            ai_message = AIMessage(content=last_message)
+                        ai_message = extract_ai_message(messages[-1])
+                        if ai_message:
+                            render_message(ai_message)
+                            chat_history.append(ai_message)
                         else:
-                            logger.warning(
-                                f"Unexpected message format, attempting to extract content: {last_message}"
-                            )
-                            # Try to extract content from unknown format
-                            content = getattr(
-                                last_message, "content", str(last_message)
-                            )
-                            ai_message = AIMessage(content=content)
-
-                        render_message(ai_message)
-                        chat_history.append(ai_message)
+                            logger.error("Failed to extract AI message from response")
+                            st.error("Unable to process the response")
                     else:
                         logger.error("Empty messages list in response")
                         st.error("No response generated from the system")
@@ -98,5 +140,5 @@ def handle_user_input(
                     st.error("Unexpected response format from the system")
 
         except Exception as e:
-            st.error(f"Error processing your request: {str(e)}")
             logger.exception("Error in chat processing")
+            st.error(f"Error processing your request: {str(e)}")
