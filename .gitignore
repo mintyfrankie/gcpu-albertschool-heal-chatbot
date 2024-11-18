@@ -13,8 +13,8 @@ dev/
 .venv
 
 # .env
-**/.env
+*/.env
 gen-lang-client-credentials.json
 
 # misc
-**/.DS_Store
+*/.DS_Store

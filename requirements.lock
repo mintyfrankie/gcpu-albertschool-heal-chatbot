@@ -203,6 +203,7 @@ pyparsing==3.2.0
     # via httplib2
 pytelegrambotapi==4.23.0
     # via gcpu-albert-hackathon
+    # via telebot
 python-dateutil==2.9.0.post0
     # via pandas
 python-dotenv==1.0.1
@@ -223,6 +224,7 @@ requests==2.32.3
     # via pytelegrambotapi
     # via requests-toolbelt
     # via streamlit
+    # via telebot
 requests-toolbelt==1.0.0
     # via langsmith
 rich==13.9.3
@@ -245,6 +247,8 @@ streamlit==1.40.0
     # via gcpu-albert-hackathon
     # via streamlit-js-eval
 streamlit-js-eval==0.1.7
+    # via gcpu-albert-hackathon
+telebot==0.0.5
     # via gcpu-albert-hackathon
 tenacity==9.0.0
     # via langchain

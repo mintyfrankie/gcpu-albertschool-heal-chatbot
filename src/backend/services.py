@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Annotated, Any, Literal, Optional, TypedDict
 
-import streamlit as st
 from dotenv import load_dotenv
 from langchain.output_parsers import PydanticOutputParser
 from langchain.schema import AIMessage, HumanMessage
@@ -30,7 +29,7 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from PIL import Image
 
-from backend import format_severity_response
+from backend import format_severity_response, user_location
 from backend.utils import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
@@ -49,7 +48,7 @@ from backend.utils.logging import setup_logger
 from backend.utils.models import Place, PlacesResponse
 
 logger = setup_logger(__name__)
-load_dotenv(r"D:/Google Hackathon/gcpu-albert-hackathon/credentials/.env")
+load_dotenv("./credentials/.env")
 
 GEMINI_VERSION = os.getenv("GEMINI_VERSION", "gemini-1.5-flash-001")
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", 0))
@@ -213,16 +212,14 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
     ).invoke(input_data)
     response_text = response.model_dump().get("Response")
     specializations = response.model_dump().get("Recommended_Specialists")
-    print("Recommended Specialists: ", specializations)
 
-    if st.session_state.location:
-        location = st.session_state.location
-        latitude = location["coords"]["latitude"]
-        longitude = location["coords"]["longitude"]
+    if user_location["latitude"] and user_location["longitude"]:
+        latitude = user_location["latitude"]
+        longitude = user_location["longitude"]
 
         doctors = get_doctors(specializations, latitude, longitude)
         doctors_info = "\n\n---\n".join(
-            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"<p><b>{doctor['name_with_title']}</b><br>\n"
             f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
             f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
             for doctor in doctors
@@ -237,7 +234,7 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
             place_objects = [Place(**place) for place in facilities_response]
             places = PlacesResponse(places=place_objects)
             pharmacies_info = "\n\n---\n".join(
-                f"<p>Name: {place.displayName.text}<br>\n"
+                f"<p><b>{place.displayName.text}</b><br>\n"
                 f"Address: {place.formattedAddress}<br>\n"
                 f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
                 for place in places.places
@@ -283,15 +280,14 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
 
     response_text = response.model_dump().get("Response")
 
-    if st.session_state.location:
-        location = st.session_state.location
-        latitude = location["coords"]["latitude"]
-        longitude = location["coords"]["longitude"]
+    if user_location["latitude"] and user_location["longitude"]:
+        latitude = user_location["latitude"]
+        longitude = user_location["longitude"]
 
         specializations = ["medecin-generaliste"]
         doctors = get_doctors(specializations, latitude, longitude, is_urgent=True)
         doctors_info = "\n\n---\n".join(
-            f"<p>Name: {doctor['name_with_title']}<br>\n"
+            f"<p><b>{doctor['name_with_title']}</b><br>\n"
             f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
             f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
             for doctor in doctors
@@ -304,7 +300,7 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
             place_objects = [Place(**place) for place in hospitals_response]
             places = PlacesResponse(places=place_objects)
             hospitals_info = "\n\n---\n".join(
-                f"<p>Name: {place.displayName.text}<br>\n"
+                f"<p><b>{place.displayName.text}</b><br>\n"
                 f"Address: {place.formattedAddress}<br>\n"
                 f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
                 for place in places.places
@@ -502,12 +498,16 @@ def process_user_input(
                     if hasattr(first_response, "model_dump"):
                         response_text = first_response.model_dump().get("Response", "")
                         if response_text:
-                            return {"messages": [("ai", response_text)]}
+                            return {
+                                "messages": [("ai", response_text)],
+                                "image": [image],
+                            }
 
         return {
             "messages": [
                 ("ai", "I apologize, but I couldn't process your request properly.")
-            ]
+            ],
+            "image": [image],
         }
 
     except Exception as e:
