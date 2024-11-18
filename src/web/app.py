@@ -110,7 +110,6 @@ def handle_user_interaction(input_container: Container) -> None:
                 )
         st.markdown("</div>", unsafe_allow_html=True)
 
-
 def main() -> None:
     """Initialize and run the Streamlit application.
 

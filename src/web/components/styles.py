@@ -191,6 +191,32 @@ CUSTOM_CSS: Final[str] = """
             border: none;
             background: transparent;
         }
+        
+        [data-testid='stFileUploader'] {
+            width: 10%;
+        }
+
+        [data-testid='stFileUploader'] section {
+            padding: 0;
+            float: left;
+        }
+
+        [data-testid='stFileUploader'] label {
+            display: none;
+        }
+
+        [data-testid='stFileUploader'] div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section > input + div {
+            display: none;
+        }
+        
+        [data-testid='stFileUploader'] section + div {
+            float: right;
+            padding-top: 0;
+        }
     </style>
 
 """
