@@ -10,10 +10,23 @@ Attributes:
 
 import logging
 from typing import Optional
-import telebot
-from telebot.types import Message
+
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+from backend import platform
 from telegram_worker.config import settings
-from telegram_worker.handlers.message_handler import MessageHandler
+from telegram_worker.handlers.message_handler import (
+    MessageHandler as TelegramMessageHandler,
+)
+
+platform = "telegram"
 
 # Configure logging
 logger: logging.Logger = logging.getLogger(__name__)
@@ -27,7 +40,7 @@ class TelegramBot:
     for receiving and responding to Telegram messages.
 
     Attributes:
-        bot (telebot.TeleBot): Initialized Telegram bot instance for handling messages
+        application (Application): Initialized Telegram bot instance for handling messages
         message_handler (MessageHandler): Handler instance for processing different message types
     """
 
@@ -39,8 +52,8 @@ class TelegramBot:
         """
         try:
             logger.info("Initializing Telegram bot...")
-            self.bot: telebot.TeleBot = telebot.TeleBot(token)
-            self.message_handler: MessageHandler = MessageHandler(self.bot)
+            self.application = ApplicationBuilder().token(token).build()
+            self.message_handler = TelegramMessageHandler(self.application)
             self._setup_handlers()
             logger.info("Telegram bot initialized successfully")
         except Exception as e:
@@ -54,36 +67,58 @@ class TelegramBot:
         that the bot can receive. This includes the start command and
         general text messages.
         """
+        self.application.add_handler(CommandHandler("start", self._handle_start))
+        self.application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text)
+        )
+        self.application.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
+        self.application.add_handler(
+            MessageHandler(filters.LOCATION, self._handle_location)
+        )
 
-        @self.bot.message_handler(commands=["start"])
-        def handle_start(message: Message) -> None:
-            """Handle the /start command from users.
+    async def _handle_start(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle the /start command from users.
 
-            Args:
-                message (Message): Telegram message object containing the start command
-                                 and metadata about the sender
-            """
-            self.message_handler.handle_start(message)
+        Args:
+            message (Message): Telegram message object containing the start command
+                             and metadata about the sender
+        """
+        await self.message_handler.handle_start(update, context)
 
-        @self.bot.message_handler(content_types=["photo"])
-        def handle_photo(message: Message) -> None:
-            """Handle incoming photo messages from users.
+    async def _handle_photo(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle incoming photo messages from users.
 
-            Args:
-                message (Message): Telegram message object containing the photo
-                                 and metadata about the sender
-            """
-            self.message_handler.handle_photo(message)
+        Args:
+            message (Message): Telegram message object containing the photo
+                             and metadata about the sender
+        """
+        await self.message_handler.handle_photo(update, context)
 
-        @self.bot.message_handler(content_types=["text"])
-        def handle_text(message: Message) -> None:
-            """Handle incoming text messages from users.
+    async def _handle_text(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle incoming text messages from users.
 
-            Args:
-                message (Message): Telegram message object containing the user's text
-                                 and metadata about the sender
-            """
-            self.message_handler.handle_text(message)
+        Args:
+            message (Message): Telegram message object containing the user's text
+                             and metadata about the sender
+        """
+        await self.message_handler.handle_text(update, context)
+
+    async def _handle_location(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle incoming location messages from users.
+
+        Args:
+            message (Message): Telegram message object containing the user's location
+                             and metadata about the sender
+        """
+        await self.message_handler.handle_location(update, context)
 
     def run(self) -> None:
         """Start the bot and begin polling for messages.
@@ -97,7 +132,9 @@ class TelegramBot:
         try:
             logger.info("Starting Telegram bot polling...")
             # Add skip_pending=True to skip messages that arrived while the bot was offline
-            self.bot.polling(none_stop=True, interval=0, timeout=20, skip_pending=True)
+            self.application.run_polling(
+                none_stop=True, interval=0, timeout=20, skip_pending=True
+            )
         except Exception as e:
             logger.error(f"Error running bot: {str(e)}", exc_info=True)
             raise e
@@ -120,7 +157,7 @@ def create_bot(token: Optional[str] = None) -> TelegramBot:
 def main() -> None:
     """Main entry point for the bot."""
     bot = create_bot()
-    bot.run()
+    bot.application.run_polling()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ It also exports commonly used functions and constants.
 """
 
 from backend.utils.format_output import format_severity_response
-from backend.utils.global_variables import user_location
+from backend.utils.global_variables import platform, user_location
 from backend.utils.logging import setup_logger
 from backend.utils.prompt_templates import (
     MAIN_PROMPT_TEMPLATE,
@@ -29,6 +29,7 @@ logger.debug("- Other severity template")
 
 __all__ = [
     "format_severity_response",
+    "platform",
     "user_location",
     "MAIN_PROMPT_TEMPLATE",
     "MILD_SEVERITY_PROMPT_TEMPLATE",

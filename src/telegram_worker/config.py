@@ -59,7 +59,7 @@ class Settings(BaseSettings):
             extra (str): How to handle extra fields in the settings
         """
 
-        env_file: str = ".env"
+        env_file: str = "/credentials/.env"
         extra: str = "ignore"
 
 
