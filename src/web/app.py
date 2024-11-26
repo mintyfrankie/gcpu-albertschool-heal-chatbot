@@ -13,13 +13,15 @@ import streamlit as st
 from dotenv import load_dotenv
 from streamlit_js_eval import get_geolocation
 
-from backend import user_location
+from backend import platform, user_location
 from backend.services import main_graph
 from web.components.chat import handle_user_input, render_chat_history
 from web.components.header import render_header
 from web.components.styles import CUSTOM_CSS, DISCLAIMER_HTML
 from web.utils.image import process_uploaded_image
 from web.utils.state import initialize_chat_history
+
+platform = "web"
 
 # Configure logging
 logger = logging.getLogger(__name__)

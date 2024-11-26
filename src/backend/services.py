@@ -29,7 +29,7 @@ from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from PIL import Image
 
-from backend import format_severity_response, user_location
+from backend import format_severity_response, platform, user_location
 from backend.utils import (
     MAIN_PROMPT_TEMPLATE,
     MILD_SEVERITY_PROMPT_TEMPLATE,
@@ -219,12 +219,20 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
         longitude = user_location["longitude"]
 
         doctors = get_doctors(specializations, latitude, longitude)
-        doctors_info = "\n\n---\n".join(
-            f"<p><b>{doctor['name_with_title']}</b><br>\n"
-            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
-            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
-            for doctor in doctors
-        )
+        if platform == "web":
+            doctors_info = "\n\n---\n".join(
+                f"<p><b>{doctor['name_with_title']}</b><br>\n"
+                f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+                f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
+                for doctor in doctors
+            )
+        else:
+            doctors_info = "\n\n---\n".join(
+                f"{doctor['name_with_title']}\n"
+                f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
+                f"Book an appointment: https://www.doctolib.fr{doctor['link']}\n"
+                for doctor in doctors
+            )
 
         # Parse the facilities response using Pydantic model
         facilities_response = find_nearby_facilities(
@@ -234,12 +242,20 @@ def moderate_severity_node(state: ChatState) -> dict[str, list[Any]]:
             # Convert dict responses to Place objects first
             place_objects = [Place(**place) for place in facilities_response]
             places = PlacesResponse(places=place_objects)
-            pharmacies_info = "\n\n---\n".join(
-                f"<p><b>{place.displayName.text}</b><br>\n"
-                f"Address: {place.formattedAddress}<br>\n"
-                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
-                for place in places.places
-            )
+            if platform == "web":
+                pharmacies_info = "\n\n---\n".join(
+                    f"<p><b>{place.displayName.text}</b><br>\n"
+                    f"Address: {place.formattedAddress}<br>\n"
+                    f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
+                    for place in places.places
+                )
+            else:
+                pharmacies_info = "\n\n---\n".join(
+                    f"{place.displayName.text}\n"
+                    f"Address: {place.formattedAddress}\n"
+                    f"Get Directions: https://www.google.com/maps/place/?q=place_id:{place.id}\n"
+                    for place in places.places
+                )
         except Exception as e:
             logger.error(f"Error parsing facilities response: {e}")
             pharmacies_info = ""
@@ -287,12 +303,20 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
 
         specializations = ["medecin-generaliste"]
         doctors = get_doctors(specializations, latitude, longitude, is_urgent=True)
-        doctors_info = "\n\n---\n".join(
-            f"<p><b>{doctor['name_with_title']}</b><br>\n"
-            f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
-            f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
-            for doctor in doctors
-        )
+        if platform == "web":
+            doctors_info = "\n\n---\n".join(
+                f"<p><b>{doctor['name_with_title']}</b><br>\n"
+                f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}<br>\n"
+                f"<a href='https://www.doctolib.fr{doctor['link']}'>Book an appointment</a><br></p>\n"
+                for doctor in doctors
+            )
+        else:
+            doctors_info = "\n\n---\n".join(
+                f"{doctor['name_with_title']}\n"
+                f"Address: {doctor['address']}, {doctor['zipcode']} {doctor['city']}\n"
+                f"Book an appointment: https://www.doctolib.fr{doctor['link']}\n"
+                for doctor in doctors
+            )
 
         hospitals_response = find_nearby_facilities(
             latitude, longitude, facility_type="hospital"
@@ -300,12 +324,20 @@ def severe_severity_node(state: ChatState) -> dict[str, list[Any]]:
         try:
             place_objects = [Place(**place) for place in hospitals_response]
             places = PlacesResponse(places=place_objects)
-            hospitals_info = "\n\n---\n".join(
-                f"<p><b>{place.displayName.text}</b><br>\n"
-                f"Address: {place.formattedAddress}<br>\n"
-                f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
-                for place in places.places
-            )
+            if platform == "web":
+                hospitals_info = "\n\n---\n".join(
+                    f"<p><b>{place.displayName.text}</b><br>\n"
+                    f"Address: {place.formattedAddress}<br>\n"
+                    f"<a href='https://www.google.com/maps/place/?q=place_id:{place.id}'>Get Directions</a><br></p>\n"
+                    for place in places.places
+                )
+            else:
+                hospitals_info = "\n\n---\n".join(
+                    f"{place.displayName.text}\n"
+                    f"Address: {place.formattedAddress}\n"
+                    f"Get Directions: https://www.google.com/maps/place/?q=place_id:{place.id}\n"
+                    for place in places.places
+                )
         except Exception as e:
             logger.error(f"Error parsing hospitals response: {e}")
             hospitals_info = ""
